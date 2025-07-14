@@ -1,0 +1,22 @@
+name: agriscanai
+description: A plant disease detector powered by TFLite
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.18.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  image_picker: ^1.0.4
+  tflite_flutter: ^0.10.0
+  tflite_flutter_helper: ^0.3.1
+  path_provider: ^2.1.1
+  permission_handler: ^11.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/plant_disease_model.tflite
+    - assets/label_map.txt
