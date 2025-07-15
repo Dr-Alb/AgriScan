@@ -31,7 +31,7 @@ MODEL_PATH  = "plant_disease_model.tflite"
 LABELS_PATH = "label_map.txt"
 
 if not Path(MODEL_PATH).exists():
-    raise FileNotFoundError(f"❌  {MODEL_PATH} not found")
+    raise FileNotFoundError(f"  {MODEL_PATH} not found")
 
 import tensorflow as tf
 interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
@@ -86,7 +86,7 @@ BASE_HTML = """
 </head><body>
 <nav>
   <button class="hamburger" onclick="toggleSidebar()">☰</button>
-  <span class="brand">🌿 AgriScan</span>
+  <span class="brand">AgriScan</span>
   <div>
     <a href="{{ url_for('landing') }}">Home</a>
     <a href="{{ url_for('landing') }}#services">Services</a>
@@ -100,14 +100,14 @@ BASE_HTML = """
   </div>
 </nav>
 <div id="sidebar">
-  <a href="{{ url_for('landing') }}">🏠 Home</a>
+  <a href="{{ url_for('landing') }}"> Home</a>
   <a href="{{ url_for('landing') }}#services">🛠 Services</a>
   {% if not session.get('user') %}
-    <a href="{{ url_for('login') }}">🔑 Login</a>
-    <a href="{{ url_for('signup') }}">📝 Sign Up</a>
+    <a href="{{ url_for('login') }}"> Login</a>
+    <a href="{{ url_for('signup') }}"> Sign Up</a>
   {% else %}
-    <a href="{{ url_for('dashboard') }}">📋 Dashboard</a>
-    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+    <a href="{{ url_for('dashboard') }}"> Dashboard</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
   {% endif %}
 </div>
 <main>{{ body | safe }}</main>
@@ -200,8 +200,8 @@ def _guard():
 
 # ─── Dashboard ────────────────────────────────────────────────────────
 DASHBOARD_BODY = """
-<h2>Welcome, {{ user }} 👋</h2>
-<div class="card"><h3><a href="{{ url_for('scan') }}">👉 Start Plant‑Disease Scan</a></h3></div>
+<h2>Welcome, {{ user }} </h2>
+<div class="card"><h3><a href="{{ url_for('scan') }}">Start Plant‑Disease Scan</a></h3></div>
 <p style="margin-top:30px;"><a href="{{ url_for('logout') }}">Log out</a></p>
 """
 @app.route("/dashboard")
