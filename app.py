@@ -44,16 +44,47 @@ def predict_image(image: Image.Image):
 def health():
     return "OK", 200
 
-# Simple HTML upload form (optional)
 HTML_FORM = """
 <!doctype html>
-<title>AgriScan – Plant Disease Detector</title>
-<h2>Upload a leaf image</h2>
-<form method=post enctype=multipart/form-data action="/predict">
-  <input type=file name=file accept="image/*">
-  <input type=submit value="Analyze">
-</form>
+<html>
+  <head>
+    <title>AgriScan AI</title>
+    <style>
+      body {
+        background-image: url('https://images.unsplash.com/photo-1568605114967-8130f3a36994'); /* Green field image */
+        background-size: cover;
+        font-family: Arial, sans-serif;
+        color: #fff;
+        text-align: center;
+        padding-top: 100px;
+      }
+      .container {
+        background: rgba(0, 100, 0, 0.6);
+        padding: 30px;
+        border-radius: 12px;
+        width: 350px;
+        margin: auto;
+      }
+      input[type=file], input[type=submit] {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🌿 AgriScan - Upload Leaf Image</h2>
+      <form action="/predict" method="post" enctype="multipart/form-data">
+        <input type="file" name="file"><br>
+        <input type="submit" value="Scan">
+      </form>
+    </div>
+  </body>
+</html>
 """
+
 
 @app.route("/", methods=["GET"])
 def index():
