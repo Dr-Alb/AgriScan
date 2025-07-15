@@ -1,5 +1,11 @@
 import os, io
 import numpy as np
+from db import SessionLocal, User          # tiny ORM helpers
+from passlib.hash import bcrypt
+
+# --- replace SECRET_KEY with env default if not done ---
+app.secret_key = os.getenv("SECRET_KEY", "change_me")
+
 from PIL import Image
 from flask import (
     Flask, request, jsonify,
@@ -66,18 +72,18 @@ LANDING = BASE_CSS + """
 
 LOGIN_PAGE = BASE_CSS + """
 <body style="background:#e8ffe8;">
-<header><h2>Login to AgriScan</h2></header>
+<header><h2>Log in to AgriScan</h2></header>
 <section>
   <form method="post">
-    <input type="text" name="u" placeholder="Username"><br><br>
+    <input type="text"     name="u" placeholder="Username"><br><br>
     <input type="password" name="p" placeholder="Password"><br><br>
     <button>Login</button>
   </form>
   {% if error %}<p style="color:#ff0">{{ error }}</p>{% endif %}
+  <p>No account? <a href="{{ url_for('signup') }}">Sign up</a></p>
 </section>
 </body>
 """
-
 DASHBOARD = BASE_CSS + """
 <body style="background:#f0fff0;">
 <header><h2>Welcome, {{ user }} 👋</h2></header>
@@ -108,6 +114,44 @@ SCAN_FORM = BASE_CSS + """
 </body>
 """
 
+SIGNUP_PAGE = BASE_CSS + """
+<body style="background:#e8ffe8;">
+<header><h2>Create a new AgriScan account</h2></header>
+<section>
+  <form method="post">
+    <input type="text"     name="u" placeholder="Choose username"><br><br>
+    <input type="password" name="p" placeholder="Choose password"><br><br>
+    <button>Sign Up</button>
+  </form>
+  {% if error %}<p style="color:#ff0">{{ error }}</p>{% endif %}
+  <p>Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+</section>
+</body>
+"""
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        username = request.form["u"].strip().lower()
+        password = request.form["p"]
+
+        if not username or not password:
+            return render_template_string(SIGNUP_PAGE, error="All fields required")
+
+        db = SessionLocal()
+        if db.query(User).filter_by(username=username).first():
+            db.close()
+            return render_template_string(SIGNUP_PAGE, error="Username already taken")
+
+        db.add(User(username=username, hash=bcrypt.hash(password)))
+        db.commit()
+        db.close()
+        # auto‑login after sign‑up
+        session["user"] = username
+        return redirect(url_for("dashboard"))
+
+    return render_template_string(SIGNUP_PAGE, error=None)
+
 # ── Routes ─────────────────────────────────────────────────────────────
 @app.route("/health")
 def health():
@@ -120,12 +164,30 @@ def landing():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if (request.form["u"], request.form["p"]) == ("farmer", "agri123"):
-            session["user"] = request.form["u"]
+        username = request.form["u"].strip().lower()
+        password = request.form["p"]
+
+        db = SessionLocal()
+        user = db.query(User).filter_by(username=username).first()
+        db.close()
+
+        if user and bcrypt.verify(password, user.hash):
+            session["user"] = username
             return redirect(url_for("dashboard"))
-        return render_template_string(LOGIN_PAGE, error="Wrong credentials")
+
+        return render_template_string(LOGIN_PAGE, error="Invalid credentials")
+
     return render_template_string(LOGIN_PAGE, error=None)
 
+
+        db.add(User(username=username, hash=bcrypt.hash(password)))
+        db.commit()
+        db.close()
+        # auto‑login after sign‑up
+        session["user"] = username
+        return redirect(url_for("dashboard"))
+
+    return render_template_string(SIGNUP_PAGE, error=None)
 @app.route("/logout")
 def logout():
     session.pop("user", None)
