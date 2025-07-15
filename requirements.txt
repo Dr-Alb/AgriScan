@@ -1,8 +1,6 @@
-streamlit==1.35.0
-tensorflow==2.15.0
+flask
+gunicorn
 pillow
 numpy
-supabase
-Flask
-gunicorn
-requests
+tensorflow==2.15.0      # CPU build; works on Render free tier
+
