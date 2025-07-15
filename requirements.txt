@@ -3,4 +3,6 @@ gunicorn
 pillow
 numpy
 tensorflow==2.15.0      # CPU build; works on Render free tier
+sqlalchemy
+passlib[bcrypt]
 
