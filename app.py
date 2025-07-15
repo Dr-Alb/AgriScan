@@ -1,87 +1,82 @@
 import os
-import streamlit as st
+import io
 import numpy as np
-from flask import Flask
 from PIL import Image
+from flask import Flask, request, jsonify, render_template_string
 import tensorflow as tf
-from supabase import create_client, Client
 
+# --- Flask app --------------------------------------------------------------
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "Hello from Render!"
+# --- Load TFLite model & labels once ---------------------------------------
+MODEL_PATH = "plant_disease_model.tflite"
+LABEL_PATH = "label_map.txt"
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # default to 5000 for local dev
-    app.run(host="0.0.0.0", port=port)
-
-# ---- Config ----
-st.set_page_config(page_title="AgriScanAI 🌿", layout="centered")
-
-# ---- Supabase connection (use Streamlit secrets) ----
-SUPABASE_URL: str = st.secrets.get("SUPABASE_URL", "")
-SUPABASE_KEY: str = st.secrets.get("SUPABASE_KEY", "")
-
-sb: Client | None = None
-if SUPABASE_URL and SUPABASE_KEY:
-    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# ---- Load labels & model ----
-with open("label_map.txt") as f:
-    LABELS = f.read().splitlines()
-
-@st.cache_resource
-def load_tflite():
-    interpreter = tf.lite.Interpreter(model_path="plant_disease_model.tflite")
-    interpreter.allocate_tensors()
-    return interpreter
-
-interpreter = load_tflite()
-input_details = interpreter.get_input_details()
+interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+interpreter.allocate_tensors()
+input_details  = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-# ---- Helper functions ----
-def preprocess(img: Image.Image):
-    img = img.resize((224, 224))
-    arr = np.array(img).astype(np.float32)
-    return np.expand_dims(arr, 0)
+with open(LABEL_PATH, "r") as f:
+    CLASS_NAMES = [line.strip() for line in f]
 
-def predict(img):
-    inp = preprocess(img)
-    interpreter.set_tensor(input_details[0]['index'], inp)
+IMG_SIZE = input_details[0]["shape"][1]  # assumes square input, e.g. 224
+
+# --- Helper: run inference --------------------------------------------------
+def predict_image(image: Image.Image):
+    """Preprocess PIL image and run TFLite inference."""
+    img = image.convert("RGB").resize((IMG_SIZE, IMG_SIZE))
+    arr = np.array(img, dtype=np.float32) / 255.0           # normalize
+    arr = arr[np.newaxis, ...]                              # add batch dim
+
+    interpreter.set_tensor(input_details[0]["index"], arr)
     interpreter.invoke()
-    output = interpreter.get_tensor(output_details[0]['index'])[0]
-    idx = int(np.argmax(output))
-    conf = float(output[idx])
-    return LABELS[idx], conf
+    pred = interpreter.get_tensor(output_details[0]["index"])[0]
 
-def log_to_supabase(label, conf):
-    if sb:
-        try:
-            sb.table("predictions").insert({"label": label, "confidence": conf}).execute()
-        except Exception as e:
-            st.warning(f"Could not log to Supabase: {e}")
+    top_idx = int(np.argmax(pred))
+    return {
+        "class": CLASS_NAMES[top_idx],
+        "confidence": float(pred[top_idx])
+    }
 
-# ---- UI ----
-st.markdown("""<h1 style='text-align:center;color:#2E7D32;'>🌿 AgriScanAI</h1>""", unsafe_allow_html=True)
-st.write("Upload a leaf image or use your camera to detect plant diseases. Results can be logged to Supabase if configured.")
+# --- Routes -----------------------------------------------------------------
+@app.route("/health")
+def health():
+    return "OK", 200
 
-file = st.file_uploader("Upload image", type=["png", "jpg", "jpeg"])
-if not file:
-    file = st.camera_input("Or take a photo")
+# Simple HTML upload form (optional)
+HTML_FORM = """
+<!doctype html>
+<title>AgriScan – Plant Disease Detector</title>
+<h2>Upload a leaf image</h2>
+<form method=post enctype=multipart/form-data action="/predict">
+  <input type=file name=file accept="image/*">
+  <input type=submit value="Analyze">
+</form>
+"""
 
-if file:
-    img = Image.open(file)
-    st.image(img, caption="Input Image", use_column_width=True)
-    with st.spinner("Analyzing..."):
-        label, conf = predict(img)
-    st.success(f"**Prediction:** {label}")
-    st.info(f"Confidence: {conf*100:.2f}%")
-    if sb:
-        log_to_supabase(label, conf)
-        st.success("Logged to Supabase ✅")
-    else:
-        st.info("Supabase not configured (add SUPABASE_URL & SUPABASE_KEY in Streamlit secrets)")
+@app.route("/", methods=["GET"])
+def index():
+    return render_template_string(HTML_FORM)
 
-st.markdown("""<p style='text-align:center;color:grey;'>Powered by TensorFlow Lite, Streamlit & Supabase</p>""", unsafe_allow_html=True)
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        image = Image.open(io.BytesIO(file.read()))
+        result = predict_image(image)
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --- Run locally ------------------------------------------------------------
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
