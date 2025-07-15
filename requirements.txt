@@ -5,4 +5,5 @@ numpy
 tensorflow==2.15.0      # CPU build; works on Render free tier
 sqlalchemy
 passlib[bcrypt]
-
+openai>=1.14   # official Python SDK (v1+)
+python-dotenv
