@@ -1,5 +1,9 @@
 import os, io
 from pathlib import Path
+from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()
+openai_client = OpenAI()          # reads key from env automatically
 
 import numpy as np
 from PIL import Image
@@ -88,6 +92,7 @@ BASE_HTML = """
   <button class="hamburger" onclick="toggleSidebar()">☰</button>
   <span class="brand">AgriScan</span>
   <div>
+   <a href="{{ url_for('chat') }}">ChatBot</a>
     <a href="{{ url_for('landing') }}">Home</a>
     <a href="{{ url_for('landing') }}#services">Services</a>
     {% if not session.get('user') %}
@@ -202,7 +207,7 @@ def _guard():
 DASHBOARD_BODY = """
 <h2>Welcome, {{ user }} </h2>
 <div class="card"><h3><a href="{{ url_for('scan') }}">Start Plant‑Disease Scan</a></h3></div>
-<p style="margin-top:30px;"><a href="{{ url_for('logout') }}">Log out</a></p>
+<p style="margin-top:35px;"><a href="{{ url_for('logout') }}">Log out</a></p>
 """
 @app.route("/dashboard")
 def dashboard():
@@ -242,6 +247,64 @@ def predict():
         return page("Leaf Scan", render_template_string(SCAN_BODY, result=result))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+CHAT_BODY = """
+<h2>Ask AgriScan AI 🤖</h2>
+<div id="chatbox" style="max-width:600px;margin:40px auto;text-align:left;
+     border:1px solid #ccc;padding:16px;border-radius:8px;min-height:280px;
+     background:#fff;overflow-y:auto;"></div>
+
+<form onsubmit="sendMsg();return false;" style="max-width:600px;margin:12px auto;">
+  <input id="msg" style="width:80%;" placeholder="Type your question…"/>
+  <button class="btn">Send</button>
+</form>
+
+<script>
+async function sendMsg(){
+  const box=document.getElementById('chatbox');
+  const inp=document.getElementById('msg');
+  const user=inp.value.trim(); if(!user) return;
+  box.innerHTML+=`<p><b>You:</b> ${user}</p>`;
+  inp.value=''; box.scrollTop=box.scrollHeight;
+  const r = await fetch('{{ url_for("chat_api") }}',{
+     method:'POST', headers:{'Content-Type':'application/json'},
+     body: JSON.stringify({message:user})
+  });
+  const data = await r.json();
+  box.innerHTML+=`<p style="color:var(--green);"><b>AgriScan AI:</b> ${data.reply}</p>`;
+  box.scrollTop=box.scrollHeight;
+}
+</script>
+"""
+
+@app.route("/chat")
+def chat():
+    redir = _guard();     # reuse the login guard
+    if redir: return redir
+    return page("ChatBot", CHAT_BODY)
+@app.route("/api/chat", methods=["POST"])
+def chat_api():
+    redir = _guard()
+    if redir: return jsonify({"error":"login required"}), 401
+
+    user_msg = request.json.get("message", "").strip()
+    if not user_msg:
+        return jsonify({"reply":"Ask me anything about crop health!"})
+
+    completion = openai_client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role":"system","content":
+             "You are AgriScan AI, an agricultural assistant specialised in "
+             "plant disease diagnosis and sustainable farming advice. "
+             "Answer concisely (≤120 words) and, when relevant, suggest how to "
+             "use the AgriScan leaf‑scanner."},
+            {"role":"user","content":user_msg}
+        ]
+    )
+    reply = completion.choices[0].message.content
+    return jsonify({"reply": reply})
+
 
 # ─── Health ping ──────────────────────────────────────────────────────
 @app.route("/health")
