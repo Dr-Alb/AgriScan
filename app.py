@@ -83,7 +83,7 @@ nav .hamburger{background:none;border:none;color:#fff;font-size:1.4rem;cursor:po
 #sidebar{position:fixed;top:0;left:-260px;width:260px;height:100%;background:var(--dark);color:#fff;padding:80px 20px 20px;transition:.3s}
 #sidebar a{display:block;color:#fff;text-decoration:none;margin:12px 0}
 #sidebar.active{left:0}
-main{flex:1;padding:70px 20px;text-align:center}
+main{flex:1;padding:60px 20px;text-align:center}
 footer{background:#ddd;padding:12px;text-align:center;font-size:.9rem;color:#444}
 .btn,button{padding:10px 22px;border:none;border-radius:6px;background:var(--green);color:#fff;cursor:pointer}
 .card{display:inline-block;padding:24px;margin:14px;border-radius:12px;min-width:250px;background:#ffffffd0}
@@ -132,7 +132,7 @@ LANDING = """
 <header style="padding:600px 20px;border-radius:12px;color:#fff;
 background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
- <p style="margin:18px 18px;font-size:1.1rem;">Snap, upload & save your harvest.</p>
+ <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.</p>
  <p>No need to pay a specialist</p>
  <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
 </header>
