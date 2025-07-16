@@ -95,15 +95,15 @@ input{padding:10px;border:1px solid #999;border-radius:6px;width:220px}
   <button class="hamburger" onclick="toggleSidebar()">☰</button>
   <span class="brand">AgriScan</span>
   <div>
-    <a href="{{ url_for('landing') }}">Home</a>
-    <a href="{{ url_for('landing') }}#services">Services</a>
-    <a href="{{ url_for('chat_ui') }}">ChatBot</a>
+    <a href="#home">Home</a>
+    <a href="#services">Services</a>
+    <a href="#chatbot">ChatBot</a>
     {% if session.get('user') %}
-      <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('logout') }}">Logout</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#Logout">Logout</a>
     {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('signup') }}">Sign Up</a>
+      <a href="#login">Login</a>
+      <a href="#signup">Sign Up</a>
     {% endif %}
   </div>
 </nav>
@@ -112,11 +112,11 @@ input{padding:10px;border:1px solid #999;border-radius:6px;width:220px}
   <a href="{{ url_for('landing') }}#services">Services</a>
   <a href="{{ url_for('chat_ui') }}">ChatBot</a>
   {% if session.get('user') %}
-    <a href="{{ url_for('dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('logout') }}">Logout</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#logout">Logout</a>
   {% else %}
-    <a href="{{ url_for('login') }}">Login</a>
-    <a href="{{ url_for('signup') }}">Sign Up</a>
+    <a href="#login">Login</a>
+    <a href="#signup">Sign Up</a>
   {% endif %}
 </div>
 <main>{{ body|safe }}</main>
@@ -133,7 +133,7 @@ LANDING = """
 background:url('https://images.unsplash.com/photo-1692369584496-3216a88f94c1?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
  <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
- <a class="btn" href="{{ url_for('#signup') }}">Get Started</a>
+ <a class="btn" href="#signup">Get Started</a>
 </header>
 <section id="services" style="margin-top:60px;">
  <h2>Our Services</h2>
