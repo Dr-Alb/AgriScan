@@ -130,7 +130,7 @@ def page(title, body):
 # ─── Routes ───────────────────────────────────────────────────────────
 LANDING = """
 <header style="padding:300px 20px;border-radius:12px;color:#fff;
-background:url('https://agcrops.osu.edu/sites/agcrops/files/newsletter_article/image/1000_F_229224729_9wQIPPixuhGC23xD9iSRo8gPN3nUn4xn.jpg') center/cover;">
+background:url('https://images.unsplash.com/photo-1582192721793-ffe9dc0e1e8d') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
  <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
  <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
