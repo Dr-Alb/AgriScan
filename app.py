@@ -1,28 +1,31 @@
+# ──────────────────────────  AgriScan AI  ────────────────────────────
 import os, io
 from pathlib import Path
-from openai import OpenAI
-from dotenv import load_dotenv
+
+from dotenv            import load_dotenv
+from openai            import OpenAI
+from PIL               import Image
+import numpy as np
+import tensorflow as tf
+
+from flask import (
+    Flask, request, session, redirect, url_for,
+    jsonify, render_template_string
+)
+
+# ─── Load secrets ────────────────────────────────────────────────────
 load_dotenv()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-
-
-import numpy as np
-from PIL import Image
-from flask import (
-    Flask, render_template_string, request, redirect,
-    url_for, session, jsonify
-)
-
-# ─── Tiny ORM layer (SQLAlchemy + SQLite) ─────────────────────────────
+# ─── DB (SQLAlchemy + SQLite) ─────────────────────────────────────────
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
 from passlib.hash import bcrypt
 
 DB_URL = "sqlite:///agriscan_users.db"
-engine = create_engine(DB_URL, echo=False, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(bind=engine)
-Base = declarative_base()
+engine  = create_engine(DB_URL, echo=False, connect_args={"check_same_thread": False})
+Session = sessionmaker(bind=engine)
+Base    = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
@@ -32,21 +35,19 @@ class User(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# ─── TFLite model load ────────────────────────────────────────────────
+# ─── TFLite model ────────────────────────────────────────────────────
 MODEL_PATH  = "plant_disease_model.tflite"
 LABELS_PATH = "label_map.txt"
 
 if not Path(MODEL_PATH).exists():
-    raise FileNotFoundError(f"  {MODEL_PATH} not found")
+    raise FileNotFoundError(f"{MODEL_PATH} missing")
 
-import tensorflow as tf
 interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
 interpreter.allocate_tensors()
 _in, _out = interpreter.get_input_details(), interpreter.get_output_details()
 IMG_SZ = _in[0]["shape"][1]
 
-with open(LABELS_PATH) as f:
-    CLASS_NAMES = [l.strip() for l in f]
+CLASS_NAMES = [l.strip() for l in open(LABELS_PATH)]
 
 def predict_pil(img: Image.Image):
     arr = (np.array(img.convert("RGB").resize((IMG_SZ, IMG_SZ))) / 255.0
@@ -57,171 +58,157 @@ def predict_pil(img: Image.Image):
     idx   = int(np.argmax(probs))
     return {"class_": CLASS_NAMES[idx], "confidence": float(probs[idx])}
 
-# ─── Flask app & layout template ──────────────────────────────────────
+# ─── Flask app & helpers ─────────────────────────────────────────────
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PROD")
 
-BASE_HTML = """
-<!doctype html><html><head>
-  <title>{{ title or 'AgriScan' }}</title>
-  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <style>
-    :root{--green:#0a8400;--dark:#044a00;--light:#e8ffe8}
-    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
-    body{min-height:100vh;display:flex;flex-direction:column;background:#f5fff5;color:#222}
-    /* NAVBAR */
-    nav{display:flex;justify-content:space-between;align-items:center;
-        background:var(--green);color:#fff;padding:14px 20px}
-    nav .brand{font-size:1.4rem;font-weight:bold}
-    nav a{color:#fff;text-decoration:none;margin-left:20px}
-    nav .hamburger{font-size:1.4rem;background:none;border:none;color:#fff;cursor:pointer}
-    /* SIDEBAR */
-    #sidebar{position:fixed;top:0;left:-260px;width:260px;height:100%;
-             background:var(--dark);padding:80px 20px 20px;color:#fff;transition:.3s}
-    #sidebar a{display:block;color:#fff;text-decoration:none;margin:12px 0}
-    #sidebar.active{left:0}
-    /* MAIN + FOOTER */
-    main{flex:1;padding:60px 20px;text-align:center}
-    footer{background:#ddd;text-align:center;padding:12px;font-size:.9rem;color:#444}
-    /* UI helpers */
-    .btn,button{padding:10px 22px;border:none;border-radius:6px;background:var(--green);color:#fff;cursor:pointer}
-    .card{background:#ffffffd0;border-radius:12px;display:inline-block;padding:24px;margin:14px;min-width:250px}
-    input{padding:10px;border-radius:6px;border:1px solid #999;width:220px}
-  </style>
-  <script>function toggleSidebar(){document.getElementById('sidebar').classList.toggle('active');}</script>
+def _guard():
+    """redirects to login if user not in session"""
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+# ─── Shared base HTML template ───────────────────────────────────────
+BASE_HTML = """<!doctype html>
+<html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{{ title or 'AgriScan' }}</title>
+<style>
+:root{--green:#0a8400;--dark:#044a00;--light:#e8ffe8}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
+body{display:flex;flex-direction:column;min-height:100vh;background:#f5fff5;color:#222}
+nav{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--green);color:#fff}
+nav .brand{font-size:1.4rem;font-weight:bold}
+nav a{color:#fff;text-decoration:none;margin-left:20px}
+nav .hamburger{background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer}
+#sidebar{position:fixed;top:0;left:-260px;width:260px;height:100%;background:var(--dark);color:#fff;padding:80px 20px 20px;transition:.3s}
+#sidebar a{display:block;color:#fff;text-decoration:none;margin:12px 0}
+#sidebar.active{left:0}
+main{flex:1;padding:60px 20px;text-align:center}
+footer{background:#ddd;padding:12px;text-align:center;font-size:.9rem;color:#444}
+.btn,button{padding:10px 22px;border:none;border-radius:6px;background:var(--green);color:#fff;cursor:pointer}
+.card{display:inline-block;padding:24px;margin:14px;border-radius:12px;min-width:250px;background:#ffffffd0}
+input{padding:10px;border:1px solid #999;border-radius:6px;width:220px}
+</style>
+<script>function toggleSidebar(){document.getElementById('sidebar').classList.toggle('active');}</script>
 </head><body>
 <nav>
   <button class="hamburger" onclick="toggleSidebar()">☰</button>
   <span class="brand">AgriScan</span>
   <div>
-   <a href="{{ url_for('chat') }}">ChatBot</a>
     <a href="{{ url_for('landing') }}">Home</a>
     <a href="{{ url_for('landing') }}#services">Services</a>
-    {% if not session.get('user') %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('signup') }}">Sign Up</a>
-    {% else %}
+    <a href="{{ url_for('chat_ui') }}">ChatBot</a>
+    {% if session.get('user') %}
       <a href="{{ url_for('dashboard') }}">Dashboard</a>
       <a href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('login') }}">Login</a>
+      <a href="{{ url_for('signup') }}">Sign Up</a>
     {% endif %}
   </div>
 </nav>
 <div id="sidebar">
- <a href="{{ url_for('chat') }}">ChatBot</a>
-  <a href="{{ url_for('landing') }}"> Home</a>
-  <a href="{{ url_for('landing') }}#services">🛠 Services</a>
-  {% if not session.get('user') %}
-    <a href="{{ url_for('login') }}"> Login</a>
-    <a href="{{ url_for('signup') }}"> Sign Up</a>
-  {% else %}
-    <a href="{{ url_for('dashboard') }}"> Dashboard</a>
+  <a href="{{ url_for('landing') }}">Home</a>
+  <a href="{{ url_for('landing') }}#services">Services</a>
+  <a href="{{ url_for('chat_ui') }}">ChatBot</a>
+  {% if session.get('user') %}
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
     <a href="{{ url_for('logout') }}">Logout</a>
+  {% else %}
+    <a href="{{ url_for('login') }}">Login</a>
+    <a href="{{ url_for('signup') }}">Sign Up</a>
   {% endif %}
 </div>
-<main>{{ body | safe }}</main>
-<footer>© 2025 AgriScan AI · Making farming smarter 🌱
-No specialist required zero cost 100% harvest</footer>
-</body></html>
-"""
+<main>{{ body|safe }}</main>
+<footer>© 2025 AgriScan AI · Making farming smarter 🌱</footer>
+</body></html>"""
 
-def page(title, body_html):
-    return render_template_string(BASE_HTML, title=title, body=body_html)
+def page(title, body):
+    return render_template_string(BASE_HTML, title=title, body=body)
 
-# ─── Landing ──────────────────────────────────────────────────────────
-LANDING_BODY = """
-<header style="padding:80px 20px;border-radius:12px;color:#fff;background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994') center/cover;">
-  <h1>Crop‑disease detection at your fingertips</h1>
-  <p style="margin-top:18px; margin-bottom:18px;font-size:1.1rem;">Snap, upload &amp; save your harvest.</p><p>No need to pay a specialist</p>
-  <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
+# ─── Routes ───────────────────────────────────────────────────────────
+LANDING = """
+<header style="padding:80px 20px;border-radius:12px;color:#fff;
+background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994') center/cover;">
+ <h1>Crop‑disease detection at your fingertips</h1>
+ <p style="margin:18px 0;font-size:1.1rem;">Snap, upload & save your harvest.</p>
+ <p>No need to pay a specialist</p>
+ <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
 </header>
 <section id="services" style="margin-top:60px;">
-  <h2>Our Services</h2>
-  <div class="card">
-    <h3>Plant‑Disease Scan</h3>
-    <p>Instant leaf‑disease diagnosis powered by AI.</p>
-    <p>Just a snap of your crop leafe and you save your harvest</p>
-  </div>
+ <h2>Our Services</h2>
+ <div class="card">
+  <h3>Plant‑Disease Scan</h3>
+  <p>Instant leaf‑disease diagnosis powered by AI.</p>
+  <p>Just a snap of your crop leafe and you save your harvest</p>
+ </div>
 </section>
 """
 @app.route("/")
 def landing():
-    return page("AgriScan – Home", LANDING_BODY)
+    return page("AgriScan – Home", LANDING)
 
-# ─── Sign‑Up ──────────────────────────────────────────────────────────
-SIGNUP_BODY = """
+# ----------  Auth  ----------
+SIGNUP = """
 <h2>Create an account</h2>
 <form method="post" style="margin-top:40px;">
-  <input type="text" name="u" placeholder="Choose username"><br><br>
-  <input type="password" name="p" placeholder="Choose password"><br><br>
+  <input name="u" placeholder="Username"><br><br>
+  <input type="password" name="p" placeholder="Password"><br><br>
   <button>Sign Up</button>
 </form>
 {% if error %}<p style="color:red;margin-top:14px;">{{ error }}</p>{% endif %}
 <p style="margin-top:22px;">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
 """
-@app.route("/signup", methods=["GET", "POST"])
+@app.route("/signup", methods=["GET","POST"])
 def signup():
-    if request.method == "POST":
-        u = request.form["u"].strip().lower()
-        p = request.form["p"]
+    if request.method=="POST":
+        u=request.form["u"].strip().lower(); p=request.form["p"]
         if not u or not p:
-            return page("Sign Up", render_template_string(SIGNUP_BODY, error="All fields required"))
-        db = SessionLocal()
+            return page("Sign Up", render_template_string(SIGNUP,error="All fields required"))
+        db=Session();                      # check duplicate
         if db.query(User).filter_by(username=u).first():
-            db.close()
-            return page("Sign Up", render_template_string(SIGNUP_BODY, error="Username already taken"))
-        db.add(User(username=u, hash=bcrypt.hash(p)))
-        db.commit(); db.close()
-        session["user"] = u
-        return redirect(url_for("dashboard"))
-    return page("Sign Up", render_template_string(SIGNUP_BODY, error=None))
+            db.close(); return page("Sign Up", render_template_string(SIGNUP,error="Username taken"))
+        db.add(User(username=u,hash=bcrypt.hash(p))); db.commit(); db.close()
+        session["user"]=u; return redirect(url_for("dashboard"))
+    return page("Sign Up", render_template_string(SIGNUP,error=None))
 
-# ─── Login ────────────────────────────────────────────────────────────
-LOGIN_BODY = """
+LOGIN = """
 <h2>Login</h2>
 <form method="post" style="margin-top:40px;">
-  <input type="text" name="u" placeholder="Username"><br><br>
+  <input name="u" placeholder="Username"><br><br>
   <input type="password" name="p" placeholder="Password"><br><br>
   <button>Login</button>
 </form>
 {% if error %}<p style="color:red;margin-top:14px;">{{ error }}</p>{% endif %}
-<p style="margin-top:22px;">New here? <a href="{{ url_for('signup') }}">Create an account</a></p>
+<p style="margin-top:22px;">New here? <a href="{{ url_for('signup') }}">Create account</a></p>
 """
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
-    if request.method == "POST":
-        u = request.form["u"].strip().lower()
-        p = request.form["p"]
-        db = SessionLocal()
-        user = db.query(User).filter_by(username=u).first(); db.close()
-        if user and bcrypt.verify(p, user.hash):
-            session["user"] = u
-            return redirect(url_for("dashboard"))
-        return page("Login", render_template_string(LOGIN_BODY, error="Invalid credentials"))
-    return page("Login", render_template_string(LOGIN_BODY, error=None))
+    if request.method=="POST":
+        u=request.form["u"].strip().lower(); p=request.form["p"]
+        db=Session(); user=db.query(User).filter_by(username=u).first(); db.close()
+        if user and bcrypt.verify(p,user.hash):
+            session["user"]=u; return redirect(url_for("dashboard"))
+        return page("Login",render_template_string(LOGIN,error="Invalid credentials"))
+    return page("Login",render_template_string(LOGIN,error=None))
 
 @app.route("/logout")
-def logout():
-    session.pop("user", None)
-    return redirect(url_for("landing"))
+def logout(): session.pop("user",None); return redirect(url_for("landing"))
 
-def _guard():
-    if "user" not in session:
-        return redirect(url_for("login"))
-
-# ─── Dashboard ────────────────────────────────────────────────────────
-DASHBOARD_BODY = """
-<h2>Welcome, Bringing solutions to you {{ user }} </h2>
+# ----------  Dashboard ----------
+DASH = """
+<h2>Welcome, {{ user }}</h2>
 <div class="card"><h3><a href="{{ url_for('scan') }}">Start Plant‑Disease Scan</a></h3></div>
 <p style="margin-top:35px;"><a href="{{ url_for('logout') }}">Log out</a></p>
 """
 @app.route("/dashboard")
 def dashboard():
-    redir = _guard();   # returns redirect if not logged in
+    redir=_guard();        # enforce login
     if redir: return redir
-    return page("Dashboard", render_template_string(DASHBOARD_BODY, user=session["user"]))
+    return page("Dashboard", render_template_string(DASH,user=session["user"]))
 
-# ─── Scan + Predict ───────────────────────────────────────────────────
-SCAN_BODY = """
+# ----------  Scan ----------
+SCAN = """
 <h2>Upload Leaf Image</h2>
 <form action="{{ url_for('predict') }}" method="post" enctype="multipart/form-data" style="margin-top:40px;">
   <input type="file" name="file" accept="image/*"><br><br>
@@ -230,92 +217,87 @@ SCAN_BODY = """
 {% if result %}
   <h3 style="margin-top:40px;">Result</h3>
   <p>Disease/Status: <b>{{ result.class_ }}</b></p>
-  <p>Confidence score: {{ '{:.1%}'.format(result.confidence) }}</p>
+  <p>Confidence: {{ '{:.1%}'.format(result.confidence) }}</p>
 {% endif %}
-<p style="margin-top:30px;"><a href="{{ url_for('dashboard') }}">⬅ Back to dashboard</a></p>
+<p style="margin-top:30px;"><a href="{{ url_for('dashboard') }}">⬅ Back</a></p>
 """
 @app.route("/scan")
 def scan():
-    redir = _guard();  # must be logged in
+    redir=_guard();  # must login
     if redir: return redir
-    return page("Leaf Scan", render_template_string(SCAN_BODY, result=None))
+    return page("Leaf Scan", render_template_string(SCAN,result=None))
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    redir = _guard()
+    redir=_guard()
     if redir: return redir
-    if "file" not in request.files or request.files["file"].filename == "":
+    file=request.files.get("file")
+    if not file or file.filename=="":
         return redirect(url_for("scan"))
     try:
-        img = Image.open(io.BytesIO(request.files["file"].read()))
-        result = predict_pil(img)
-        return page("Leaf Scan", render_template_string(SCAN_BODY, result=result))
+        img=Image.open(io.BytesIO(file.read()))
+        res=predict_pil(img)
+        return page("Leaf Scan", render_template_string(SCAN,result=res))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error":str(e)}),500
 
-CHAT_BODY = """
-<h2>Ask AgriScan AI </h2>
-<div id="chatbox" style="max-width:600px;margin:40px auto;text-align:left;
-     border:1px solid #ccc;padding:16px;border-radius:8px;min-height:280px;
-     background:#fff;overflow-y:auto;"></div>
+# ----------  ChatBot ----------
+CHAT_UI = """
+<h2>Ask AgriScan AI</h2>
+<div id="chatBox" style="max-width:600px;margin:40px auto;border:1px solid #ccc;
+     padding:16px;border-radius:8px;min-height:280px;background:#fff;overflow-y:auto;"></div>
 
-<form onsubmit="sendMsg();return false;" style="max-width:600px;margin:12px auto;">
-  <input id="msg" style="width:80%;" placeholder="Type your question…"/>
+<form id="chatForm" style="max-width:600px;margin:12px auto;" onsubmit="return sendMsg();">
+  <input id="userMessage" style="width:78%;" placeholder="Type your question…">
   <button class="btn">Send</button>
 </form>
 
 <script>
-async function sendMessage() {
-    const userInput = document.getElementById("userMessage").value;
-    const chatBox = document.getElementById("chatBox");
-
-    chatBox.innerHTML += `<div><strong>You:</strong> ${userInput}</div>`;
-
-    const response = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userInput })
-    });
-
-    const data = await response.json();
-    if (data.response) {
-        chatBox.innerHTML += `<div><strong>Bot:</strong> ${data.response}</div>`;
-    } else {
-        chatBox.innerHTML += `<div><strong>Bot:</strong> Error: ${data.error}</div>`;
-    }
-
-    document.getElementById("userMessage").value = "";
+async function sendMsg(){
+  const inp=document.getElementById('userMessage');
+  const msg=inp.value.trim();
+  if(!msg) return false;
+  const box=document.getElementById('chatBox');
+  box.innerHTML+=`<div><b>You:</b> ${msg}</div>`;
+  inp.value=""; box.scrollTop=box.scrollHeight;
+  try{
+    const r=await fetch("/api/chat",{method:"POST",headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg})});
+    const d=await r.json();
+    box.innerHTML+=`<div><b>Bot:</b> ${d.response || d.error}</div>`;
+    box.scrollTop=box.scrollHeight;
+  }catch(e){box.innerHTML+=`<div><b>Error:</b> ${e}</div>`;}
+  return false;
 }
 </script>
-
 """
-
 @app.route("/chat")
-def chat():
-    redir = _guard();     # reuse the login guard
+def chat_ui():
+    redir=_guard();  # login required
     if redir: return redir
-    return page("ChatBot", CHAT_BODY)
+    return page("ChatBot", CHAT_UI)
+
 @app.route("/api/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    prompt = data.get("message")
-    if not prompt:
-        return jsonify({"error": "No message provided"}), 400
-
+def chat_api():
+    data=request.get_json(silent=True) or {}
+    prompt=data.get("message","").strip()
+    if not prompt: return jsonify({"error":"Empty prompt"}),400
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",  # or gpt-4 if you have access
-            messages=[{"role": "user", "content": prompt}]
+        resp=openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role":"user","content":prompt}]
         )
-        reply = response.choices[0].message.content
-        return jsonify({"response": reply})
+        return jsonify({"response":resp.choices[0].message.content})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error":str(e)}),500
 
-# ─── Health ping ──────────────────────────────────────────────────────
+# ----------  Health ----------
 @app.route("/health")
-def health(): return "OK", 200
+def health(): return "OK",200
 
-# ─── Launch ───────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+# ─── Run locally ──────────────────────────────────────────────────────
+if __name__=="__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT",5000)), debug=True)
+
+  
+
