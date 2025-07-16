@@ -130,7 +130,7 @@ def page(title, body):
 # ─── Routes ───────────────────────────────────────────────────────────
 LANDING = """
 <header style="padding:300px 20px;border-radius:12px;color:#fff;
-background:url('https://genana.ai/pd/mad-man-watering-plants-with-umbrella-in-rain-1527') center/cover;">
+background:url('https://unsplash.com/photos/green-grass-field-under-white-clouds-during-daytime-PvwdlXqo85k') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
  <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
  <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
