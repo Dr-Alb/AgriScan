@@ -133,7 +133,7 @@ LANDING = """
 background:url('https://images.unsplash.com/photo-1692369584496-3216a88f94c1?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
  <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
- <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
+ <a class="btn" href="{{ url_for('#signup') }}">Get Started</a>
 </header>
 <section id="services" style="margin-top:60px;">
  <h2>Our Services</h2>
