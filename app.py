@@ -129,11 +129,10 @@ def page(title, body):
 
 # ─── Routes ───────────────────────────────────────────────────────────
 LANDING = """
-<header style="padding:600px 20px;border-radius:12px;color:#fff;
+<header style="padding:500px 20px;border-radius:12px;color:#fff;
 background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
- <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.</p>
- <p>No need to pay a specialist</p>
+ <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
  <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
 </header>
 <section id="services" style="margin-top:60px;">
