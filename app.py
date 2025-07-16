@@ -107,6 +107,7 @@ BASE_HTML = """
   </div>
 </nav>
 <div id="sidebar">
+ <a href="{{ url_for('chat') }}">ChatBot</a>
   <a href="{{ url_for('landing') }}"> Home</a>
   <a href="{{ url_for('landing') }}#services">🛠 Services</a>
   {% if not session.get('user') %}
@@ -118,7 +119,8 @@ BASE_HTML = """
   {% endif %}
 </div>
 <main>{{ body | safe }}</main>
-<footer>© 2025 AgriScan AI · Making farming smarter 🌱</footer>
+<footer>© 2025 AgriScan AI · Making farming smarter 🌱
+No specialist required zero cost 100% harvest</footer>
 </body></html>
 """
 
@@ -129,7 +131,7 @@ def page(title, body_html):
 LANDING_BODY = """
 <header style="padding:80px 20px;border-radius:12px;color:#fff;background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994') center/cover;">
   <h1>Crop‑disease detection at your fingertips</h1>
-  <p style="margin-top:14px;font-size:1.1rem;">Snap, upload &amp; save your harvest.</p>
+  <p style="margin-top:18px; margin-bottom:18px;font-size:1.1rem;">Snap, upload &amp; save your harvest.</p><p>No need to pay a specialist</p>
   <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
 </header>
 <section id="services" style="margin-top:60px;">
@@ -137,6 +139,7 @@ LANDING_BODY = """
   <div class="card">
     <h3>Plant‑Disease Scan</h3>
     <p>Instant leaf‑disease diagnosis powered by AI.</p>
+    <p>Just a snap of your crop leafe and you save your harvest</p>
   </div>
 </section>
 """
@@ -207,7 +210,7 @@ def _guard():
 
 # ─── Dashboard ────────────────────────────────────────────────────────
 DASHBOARD_BODY = """
-<h2>Welcome, {{ user }} </h2>
+<h2>Welcome, Bringing solutions to you {{ user }} </h2>
 <div class="card"><h3><a href="{{ url_for('scan') }}">Start Plant‑Disease Scan</a></h3></div>
 <p style="margin-top:35px;"><a href="{{ url_for('logout') }}">Log out</a></p>
 """
