@@ -130,7 +130,7 @@ def page(title, body):
 # ─── Routes ───────────────────────────────────────────────────────────
 LANDING = """
 <header style="padding:300px 20px;border-radius:12px;color:#fff;
-background:url('https://unsplash.com/photos/green-grass-field-under-white-clouds-during-daytime-PvwdlXqo85k') center/cover;">
+background:url('https://images.unsplash.com/photo-1692369584496-3216a88f94c1?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
  <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
  <a class="btn" href="{{ url_for('signup') }}">Get Started</a>
