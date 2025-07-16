@@ -3,7 +3,9 @@ from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
-openai_client = OpenAI()          # reads key from env automatically
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+app = Flask(__name__)
 
 import numpy as np
 from PIL import Image
@@ -249,7 +251,7 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 CHAT_BODY = """
-<h2>Ask AgriScan AI 🤖</h2>
+<h2>Ask AgriScan AI </h2>
 <div id="chatbox" style="max-width:600px;margin:40px auto;text-align:left;
      border:1px solid #ccc;padding:16px;border-radius:8px;min-height:280px;
      background:#fff;overflow-y:auto;"></div>
@@ -260,21 +262,29 @@ CHAT_BODY = """
 </form>
 
 <script>
-async function sendMsg(){
-  const box=document.getElementById('chatbox');
-  const inp=document.getElementById('msg');
-  const user=inp.value.trim(); if(!user) return;
-  box.innerHTML+=`<p><b>You:</b> ${user}</p>`;
-  inp.value=''; box.scrollTop=box.scrollHeight;
-  const r = await fetch('{{ url_for("chat_api") }}',{
-     method:'POST', headers:{'Content-Type':'application/json'},
-     body: JSON.stringify({message:user})
-  });
-  const data = await r.json();
-  box.innerHTML+=`<p style="color:var(--green);"><b>AgriScan AI:</b> ${data.reply}</p>`;
-  box.scrollTop=box.scrollHeight;
+async function sendMessage() {
+    const userInput = document.getElementById("userMessage").value;
+    const chatBox = document.getElementById("chatBox");
+
+    chatBox.innerHTML += `<div><strong>You:</strong> ${userInput}</div>`;
+
+    const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userInput })
+    });
+
+    const data = await response.json();
+    if (data.response) {
+        chatBox.innerHTML += `<div><strong>Bot:</strong> ${data.response}</div>`;
+    } else {
+        chatBox.innerHTML += `<div><strong>Bot:</strong> Error: ${data.error}</div>`;
+    }
+
+    document.getElementById("userMessage").value = "";
 }
 </script>
+
 """
 
 @app.route("/chat")
@@ -283,28 +293,21 @@ def chat():
     if redir: return redir
     return page("ChatBot", CHAT_BODY)
 @app.route("/api/chat", methods=["POST"])
-def chat_api():
-    redir = _guard()
-    if redir: return jsonify({"error":"login required"}), 401
+def chat():
+    data = request.get_json()
+    prompt = data.get("message")
+    if not prompt:
+        return jsonify({"error": "No message provided"}), 400
 
-    user_msg = request.json.get("message", "").strip()
-    if not user_msg:
-        return jsonify({"reply":"Ask me anything about crop health!"})
-
-    completion = openai_client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role":"system","content":
-             "You are AgriScan AI, an agricultural assistant specialised in "
-             "plant disease diagnosis and sustainable farming advice. "
-             "Answer concisely (≤120 words) and, when relevant, suggest how to "
-             "use the AgriScan leaf‑scanner."},
-            {"role":"user","content":user_msg}
-        ]
-    )
-    reply = completion.choices[0].message.content
-    return jsonify({"reply": reply})
-
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",  # or gpt-4 if you have access
+            messages=[{"role": "user", "content": prompt}]
+        )
+        reply = response.choices[0].message.content
+        return jsonify({"response": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ─── Health ping ──────────────────────────────────────────────────────
 @app.route("/health")
