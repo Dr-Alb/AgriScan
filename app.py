@@ -129,7 +129,7 @@ def page(title, body):
 
 # ─── Routes ───────────────────────────────────────────────────────────
 LANDING = """
-<header style="padding:500px 20px;border-radius:12px;color:#fff;
+<header style="padding:300px 20px;border-radius:12px;color:#fff;
 background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994') center/cover;">
  <h1>Crop‑disease detection at your fingertips</h1>
  <p style="margin:18px 18px;padding-bottom:20px;font-size:1.1rem;">Snap, upload & save your harvest.<br> No need to pay a specialist</p>
