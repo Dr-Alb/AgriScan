@@ -157,12 +157,12 @@ def chat_with_gpt(prompt):
         return f"Error: {str(e)}"
 
 # ─── Routes ───
-@app.route("/")
+@app.route("/send-alert", methods=["GET", "POST"])
 def landing():
     return render_template_string(BASE_HTML, title="Home", body="""
     <div class='card'><h2>Welcome to AgriScan AI</h2>
     <p>Your AI-powered agricultural assistant.</p>
-    <form action='{{ url_for("send_alert") }}' method='POST'>
+    <form action='{{ url_for("send_alert") }}' method=(['POST'"POST"])>
       <button type='submit'>Send Today's Weather Alert</button>
     </form></div>
     """)
