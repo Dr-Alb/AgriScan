@@ -130,6 +130,7 @@ BASE_HTML = """
 
   .overlay {
     padding: 15px;
+    background-color:#b57edc;
   }
 
   .dropdown-content {
@@ -151,7 +152,7 @@ BASE_HTML = """
     .sidebar a { padding: 10px 15px; display: block; color: white; text-decoration: none; }
     .sidebar a:hover { background-color: #575757; }
     .main { margin-left: 220px; padding: 20px; }
-    .footer { background-color: #222; color: white; text-align: center; padding: 15px; position: fixed; width: 100%; bottom: 0; left: 0; }
+    .footer {  background-color: #9b59b6; color: white; text-align: center; padding: 15px; position: fixed; width: 100%; bottom: 0; left: 0; }
     .card { background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 20px; }
     textarea, input, button { font-size: 1em; padding: 10px; margin-top: 10px; }
   </style>
