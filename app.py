@@ -34,65 +34,125 @@ Base.metadata.create_all(engine)
 
 # ─── Templates ──
 BASE_HTML = """<!doctype html>
-<html><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>{{ title }}</title>
-<style>
-:root { --green: #0a8400; --dark: #044a00; --light: #e8ffe8; }
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-body { display: flex; flex-direction: column; min-height: 100vh; background: #f5fff5; color: #222; }
-nav { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: var(--green); color: #fff; }
-nav .brand { font-size: 1.4rem; font-weight: bold; }
-nav a { color: #fff; text-decoration: none; margin-left: 20px; }
-nav .hamburger { background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
-#sidebar { position: fixed; top: 0; left: -260px; width: 260px; height: 100%; background: var(--dark); color: #fff; padding: 80px 20px 20px; transition: .3s; }
-#sidebar a { display: block; color: #fff; text-decoration: none; margin: 12px 0; }
-#sidebar.active { left: 0; }
-main { flex: 1; padding: 60px 20px; text-align: center; }
-footer { background: #ddd; padding: 12px; text-align: center; font-size: .9rem; color: #444; }
-.btn, button { padding: 10px 22px; border: none; border-radius: 6px; background: var(--green); color: #fff; cursor: pointer; }
-.card { display: inline-block; padding: 24px; margin: 14px; border-radius: 12px; min-width: 250px; background: #ffffffd0; }
-input, textarea { padding: 10px; border: 1px solid #999; border-radius: 6px; width: 220px; }
-header { padding: 300px 20px; border-radius: 12px; color: #fff;
-  background: url('https://images.unsplash.com/photo-1692369584496-3216a88f94c1?q=80&w=1032&auto=format&fit=crop') center/cover; }
-@media (max-width: 600px) {
-  header { background: url('https://images.unsplash.com/photo-1615913783914-91fba0a7120f?crop=entropy&fit=crop&w=600&h=400') center/cover; padding: 160px 20px; }
-}
-</style>
-<script>function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('active'); }</script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgriScan AI Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    header {
+      background: url('https://images.unsplash.com/photo-1581090700227-1e37b190418e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80') center/cover;
+      padding: 150px 20px;
+      text-align: center;
+      color: white;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .btn:hover {
+      background: #218838;
+    }
+
+    main {
+      padding: 30px;
+      max-width: 960px;
+      margin: auto;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    section h2 {
+      font-size: 1.5em;
+      border-bottom: 2px solid #28a745;
+      padding-bottom: 5px;
+      margin-bottom: 15px;
+    }
+
+    .card {
+      background: #f4f4f4;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 600px) {
+      header {
+        background: url('https://images.unsplash.com/photo-1615913783914-91fba0a7120f?crop=entropy&fit=crop&w=600&h=400') center/cover;
+        padding: 100px 20px;
+      }
+
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .btn {
+        width: 100%;
+        font-size: 1em;
+      }
+    }
+  </style>
 </head>
 <body>
-<nav>
-  <button class="hamburger" onclick="toggleSidebar()">☰</button>
-  <span class="brand">AgriScan</span>
-  <div>
-    <a href="#home">Home</a>
-    <a href="#services">Services</a>
-    <a href="{{ url_for('chatbot') }}">ChatBot</a>
-    {% if session.get('user') %}
-      <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('signup') }}">Sign Up</a>
-    {% endif %}
-  </div>
-</nav>
-<div id="sidebar">
-  <a href="{{ url_for('landing') }}">Home</a>
-  <a href="#services">Services</a>
-  <a href="{{ url_for('chatbot') }}">ChatBot</a>
-  {% if session.get('user') %}
-    <a href="{{ url_for('dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('logout') }}">Logout</a>
-  {% else %}
-    <a href="{{ url_for('login') }}">Login</a>
-    <a href="{{ url_for('signup') }}">Sign Up</a>
-  {% endif %}
-</div>
-<main>{{ body|safe }}</main>
-<footer>© 2025 AgriScan AI · Making farming smarter 🌱<br>Bringing solutions to you</footer>
-</body></html>"""
+
+  <header>
+    <h1>Welcome</h1>
+    <p>Your AgriScan AI Dashboard</p>
+    <form action="{{ url_for('send_alert') }}" method="POST">
+      <button class="btn" type="submit">Send Today's Weather Alert</button>
+    </form>
+  </header>
+
+  <main>
+    <!-- Services Section -->
+    <section>
+      <h2>Our Services</h2>
+      <div class="card">
+        <p><strong> Weather Alerts:</strong> Receive timely weather notifications to help you plan your planting and spraying effectively.</p>
+      </div>
+      <div class="card">
+        <p><strong> AI Crop Advisor:</strong> Use our chatbot to ask farming questions and get instant help powered by AI.</p>
+      </div>
+      <div class="card">
+        <p><strong> Smart Reports:</strong> Analyze past alerts and forecast trends to optimize your yield season after season.</p>
+      </div>
+    </section>
+
+    <!-- Optional Future Section -->
+    <section>
+      <h2>Quick Access</h2>
+      <ul>
+        <li><a href="/chatbot">Talk to AgriChat Assistant</a></li>
+        <li><a href="/alerts">View Alert History</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </section>
+  </main>
+
+</body>
+</html>
+
 
 # ─── Helper ───
 def send_weather_sms(phone):
@@ -165,9 +225,9 @@ def dashboard():
     <h2>Welcome {session['user']}</h2>
     <p>Click below to send today's alert manually.</p>
     <a class="btn" href="{{{{ url_for('send_alert') }}}}">Send Weather Alert</a>
-    <hr><h3 id="services">📌 Services</h3>
-    <div class="card"><h4>📱 SMS Alerts</h4><p>Daily weather notifications via SMS</p></div>
-    <div class="card"><h4>💬 ChatBot</h4><p>Ask the AI about crops, pests, climate, etc.</p></div>
+    <hr><h3 id="services"> Services</h3>
+    <div class="card"><h4> SMS Alerts</h4><p>Daily weather notifications via SMS</p></div>
+    <div class="card"><h4> ChatBot</h4><p>Ask the AI about crops, pests, climate, etc.</p></div>
     """)
 
 @app.route("/send-alert")
