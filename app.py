@@ -217,9 +217,10 @@ def dashboard():
     <hr>
     <h3>Our Services</h3>
     <ul>
-      <li>SMS Alerts</li>
-      <li>ChatBot Support</li>
-      <li>Smart Forecasting</li>
+      <li>leafe scanning for diseases</li>
+      <li>SMS Alerts for daillly weather updates</li>
+      <li>ChatBot Support to give you solutiond on your crops</li>
+      <li>Smart Forecasting of the best weather patterns</li>
     </ul></div>
     """)
 
