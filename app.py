@@ -75,14 +75,20 @@ BASE_HTML = """
       position:relative;
       z-index: 0;
     }
-    .video-bg {
-      position: fixed;
-      top: 0; left: 0;
-      width:100vw;
-      height: 100vw;
-      object-fit: cover;
-      z-index: -1;
-    }
+
+.corner-video {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 300px;
+  height: 170px;
+  object-fit: cover;
+  border: 3px solid #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  z-index: 5;
+}
+   
     .overlay {
       background: rgba(0,0,0,0.5);
       padding: 30px;
@@ -105,6 +111,36 @@ BASE_HTML = """
       box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
       z-index: 1;
     }
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+
+  .main {
+    margin-left: 0;
+    padding: 10px;
+  }
+
+  body {
+    font-size: 16px;
+  }
+
+  .overlay {
+    padding: 15px;
+  }
+
+  .dropdown-content {
+    position: relative;
+  }
+
+  .video-bg {
+    object-fit: contain;
+  }
+}
+    
     .dropdown-content a {
       color: white;
       padding: 12px 16px;
@@ -122,9 +158,11 @@ BASE_HTML = """
 </head>
 <body>
   {% if title == "Welcome" %}
-  <video class="video-bg" autoplay muted loop>
-    <source src="https://www.videvo.net/videvo_files/converted/2016_08/preview/Green_Field_Drone.mp471997.webm" type="video/webm">
-  </video>
+ <video class="corner-video" autoplay muted loop>
+  <source src="https://cdn.pixabay.com/video/2018/09/05/16992-291366754_tiny.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
   {% endif %}
   <div class="navbar">
     <div><strong>AgriScan AI</strong></div>
