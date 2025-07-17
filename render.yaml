@@ -5,4 +5,15 @@ services:
   runtime: python
   pythonVersion: 3.10         
   buildCommand: pip install -r requirements.txt
-  startCommand: streamlit run streamlit_app.py --server.port $PORT --server.headless true
+ startCommand: gunicorn app:app
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: WEATHER_API_KEY
+        sync: false
+      - key: TWILIO_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE
+        sync: false
