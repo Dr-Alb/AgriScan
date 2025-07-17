@@ -11,6 +11,9 @@ import tensorflow as tf
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
 from passlib.hash import bcrypt
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 
 load_dotenv()
 
@@ -396,4 +399,6 @@ scheduler.start()
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host="0.0.0.0", port=port)
+
