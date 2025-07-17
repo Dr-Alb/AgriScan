@@ -8,3 +8,4 @@ passlib[bcrypt]
 openai>=1.14   # official Python SDK (v1+)
 python-dotenv
 twilio
+apscheduler==3.10.4
