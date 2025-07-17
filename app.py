@@ -40,121 +40,100 @@ BASE_HTML = """<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgriScan AI Dashboard</title>
+  <title>{{ title }}</title>
   <style>
     body {
       margin: 0;
       font-family: "Segoe UI", sans-serif;
+      background: url('https://images.unsplash.com/photo-1581090700227-1e37b190418e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80') center/cover no-repeat fixed;
+      color: #333;
     }
-
-    header {
-      background: url('https://images.unsplash.com/photo-1581090700227-1e37b190418e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80') center/cover;
-      padding: 150px 20px;
-      text-align: center;
+    .navbar {
+      background-color: #28a745;
       color: white;
-    }
-
-    h1 {
-      font-size: 2.5em;
-      margin-bottom: 10px;
-    }
-
-    .btn {
-      background: #28a745;
-      color: white;
-      border: none;
       padding: 10px 20px;
-      font-size: 1em;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.3s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-
-    .btn:hover {
-      background: #218838;
+    .navbar a {
+      color: white;
+      margin-right: 15px;
+      text-decoration: none;
     }
-
-    main {
-      padding: 30px;
-      max-width: 960px;
-      margin: auto;
+    .sidebar {
+      height: 100vh;
+      width: 200px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background-color: #222;
+      padding-top: 60px;
     }
-
-    section {
-      margin-bottom: 40px;
+    .sidebar a {
+      padding: 10px 15px;
+      display: block;
+      color: white;
+      text-decoration: none;
     }
-
-    section h2 {
-      font-size: 1.5em;
-      border-bottom: 2px solid #28a745;
-      padding-bottom: 5px;
-      margin-bottom: 15px;
+    .sidebar a:hover {
+      background-color: #575757;
     }
-
+    .main {
+      margin-left: 220px;
+      padding: 20px;
+    }
+    .footer {
+      background-color: #222;
+      color: white;
+      text-align: center;
+      padding: 15px;
+      position: fixed;
+      width: 100%;
+      bottom: 0;
+      left: 0;
+    }
     .card {
-      background: #f4f4f4;
+      background: rgba(255, 255, 255, 0.85);
       padding: 20px;
       border-radius: 10px;
-      margin-bottom: 20px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
     }
-
-    @media (max-width: 600px) {
-      header {
-        background: url('https://images.unsplash.com/photo-1615913783914-91fba0a7120f?crop=entropy&fit=crop&w=600&h=400') center/cover;
-        padding: 100px 20px;
-      }
-
-      h1 {
-        font-size: 1.8em;
-      }
-
-      .btn {
-        width: 100%;
-        font-size: 1em;
-      }
+    textarea, input, button {
+      font-size: 1em;
+      padding: 10px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-
-  <header>
-    <h1>Welcome</h1>
-    <p>Your AgriScan AI Dashboard</p>
-    <form action="{{ url_for('send_alert') }}" method="POST">
-      <button class="btn" type="submit">Send Today's Weather Alert</button>
-    </form>
-  </header>
-
-  <main>
-    <!-- Services Section -->
-    <section>
-      <h2>Our Services</h2>
-      <div class="card">
-        <p><strong> Weather Alerts:</strong> Receive timely weather notifications to help you plan your planting and spraying effectively.</p>
-      </div>
-      <div class="card">
-        <p><strong> AI Crop Advisor:</strong> Use our chatbot to ask farming questions and get instant help powered by AI.</p>
-      </div>
-      <div class="card">
-        <p><strong> Smart Reports:</strong> Analyze past alerts and forecast trends to optimize your yield season after season.</p>
-      </div>
-    </section>
-
-    <!-- Optional Future Section -->
-    <section>
-      <h2>Quick Access</h2>
-      <ul>
-        <li><a href="/chatbot">Talk to AgriChat Assistant</a></li>
-        <li><a href="/alerts">View Alert History</a></li>
-        <li><a href="/logout">Logout</a></li>
-      </ul>
-    </section>
-  </main>
-
+  <div class="navbar">
+    <div><strong>AgriScan AI</strong></div>
+    <div>
+      <a href="/">Home</a>
+      <a href="/dashboard">Services</a>
+      <a href="/chatbot">Chatbot</a>
+      <a href="/login">Sign In</a>
+      <a href="/signup">Sign Up</a>
+    </div>
+  </div>
+  <div class="sidebar">
+    <a href="/">Home</a>
+    <a href="/dashboard">Services</a>
+    <a href="/chatbot">Chatbot</a>
+    <a href="/login">Sign In</a>
+    <a href="/signup">Sign Up</a>
+    <a href="/logout">Logout</a>
+  </div>
+  <div class="main">
+    {{ body|safe }}
+  </div>
+  <div class="footer">
+    © 2025 AgriScan AI. All rights reserved.
+  </div>
 </body>
-</html>
-"""
+</html>"""
 
 # ─── Helper ───
 def send_weather_sms(phone):
@@ -180,7 +159,13 @@ def chat_with_gpt(prompt):
 # ─── Routes ───
 @app.route("/")
 def landing():
-    return render_template_string(BASE_HTML, title="Welcome", body="<header><h1>Welcome to AgriScan AI</h1></header>")
+    return render_template_string(BASE_HTML, title="Home", body="""
+    <div class='card'><h2>Welcome to AgriScan AI</h2>
+    <p>Your AI-powered agricultural assistant.</p>
+    <form action='{{ url_for("send_alert") }}' method='POST'>
+      <button type='submit'>Send Today's Weather Alert</button>
+    </form></div>
+    """)
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -192,11 +177,12 @@ def signup():
         db.close()
         return redirect(url_for("login"))
     return render_template_string(BASE_HTML, title="Sign Up", body="""
-    <h2>Create Account</h2><form method="POST">
-    <input name="username" placeholder="Username"><br><br>
-    <input name="password" placeholder="Password" type="password"><br><br>
-    <input name="phone" placeholder="Phone (+2547...)"><br><br>
-    <button type="submit">Sign Up</button></form>
+    <div class='card'><h2>Create Account</h2>
+    <form method="POST">
+    <input name="username" placeholder="Username"><br>
+    <input name="password" placeholder="Password" type="password"><br>
+    <input name="phone" placeholder="Phone (+2547...)"><br>
+    <button type="submit">Sign Up</button></form></div>
     """)
 
 @app.route("/login", methods=["GET", "POST"])
@@ -210,10 +196,11 @@ def login():
             return redirect(url_for("dashboard"))
         return "Invalid login"
     return render_template_string(BASE_HTML, title="Login", body="""
-    <h2>Login</h2><form method="POST">
-    <input name="username" placeholder="Username"><br><br>
-    <input name="password" placeholder="Password" type="password"><br><br>
-    <button type="submit">Login</button></form>
+    <div class='card'><h2>Login</h2>
+    <form method="POST">
+    <input name="username" placeholder="Username"><br>
+    <input name="password" placeholder="Password" type="password"><br>
+    <button type="submit">Login</button></form></div>
     """)
 
 @app.route("/logout")
@@ -224,15 +211,19 @@ def logout():
 @app.route("/dashboard")
 def dashboard():
     return render_template_string(BASE_HTML, title="Dashboard", body=f"""
-    <h2>Welcome {session['user']}</h2>
+    <div class='card'><h2>Welcome {session.get('user', '')}</h2>
     <p>Click below to send today's alert manually.</p>
-    <a class="btn" href="{{{{ url_for('send_alert') }}}}">Send Weather Alert</a>
-    <hr><h3 id="services"> Services</h3>
-    <div class="card"><h4> SMS Alerts</h4><p>Daily weather notifications via SMS</p></div>
-    <div class="card"><h4> ChatBot</h4><p>Ask the AI about crops, pests, climate, etc.</p></div>
+    <a href='{{{{ url_for("send_alert") }}}}'><button>Send Weather Alert</button></a>
+    <hr>
+    <h3>Our Services</h3>
+    <ul>
+      <li>SMS Alerts</li>
+      <li>ChatBot Support</li>
+      <li>Smart Forecasting</li>
+    </ul></div>
     """)
 
-@app.route("/send-alert")
+@app.route("/send-alert", methods=["POST"])
 def send_alert():
     db = Session()
     user = db.query(User).filter_by(username=session["user"]).first()
@@ -261,12 +252,12 @@ def chatbot():
         question = request.form["message"]
         response = chat_with_gpt(question)
     return render_template_string(BASE_HTML, title="ChatBot", body=f"""
-    <h2>AgriScan AI ChatBot</h2>
+    <div class='card'><h2>AgriScan AI ChatBot</h2>
     <form method="POST">
-        <textarea name="message" placeholder="Ask me anything..." rows="4" cols="50"></textarea><br><br>
+        <textarea name="message" placeholder="Ask me anything..." rows="4" cols="50"></textarea><br>
         <button type="submit">Ask</button>
     </form>
-    <div style="margin-top: 20px;"><strong>Response:</strong><br>{response}</div>
+    <div style="margin-top: 20px;"><strong>Response:</strong><br>{response}</div></div>
     """)
 
 # ─── Run ───
