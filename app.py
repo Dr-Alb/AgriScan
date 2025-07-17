@@ -315,15 +315,14 @@ def dashboard():
 def chatbot():
     reply = ""
     if request.method == "POST":
-        prompt = request.form["prompt"]
-        res = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
-        )
-          try:
-        reply = res.choices[0].message.content
-
-    except Exception as e:
+        try:
+            prompt = request.form["prompt"]
+            res = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            reply = res.choices[0].message.content
+        except Exception as e:
             reply = f"⚠️ Error: {str(e)}"
 
     return render_template_string(BASE_HTML, title="Chatbot", body=f"""
@@ -349,6 +348,7 @@ def chatbot():
         }}
         </script>
     """)
+
 
 @app.route("/send_alerts")
 def send_alerts():
@@ -383,7 +383,7 @@ def send_daily_weather_alerts():
         if user.phone:
             try:
                 msg = requests.get("https://wttr.in/?format=3").text
-                Client(TWILIO_SID, TWILIO_TOKEN).messages.create(
+               twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)twilio_client.messages.create(
                     to=user.phone,
                     from_=TWILIO_FROM,
                     body=f"🌦 Daily Weather Update: {msg}"
@@ -402,4 +402,3 @@ scheduler.start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host="0.0.0.0", port=port)
-
