@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 from twilio.rest import Client
 import requests
-import openai
+from openai import OpenAI
 
 load_dotenv()
 
@@ -20,7 +20,9 @@ Session = sessionmaker(bind=engine)
 TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
 TWILIO_FROM = os.getenv("TWILIO_FROM")
-openai.api_key = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ─── Models ──
 class User(Base):
@@ -152,24 +154,24 @@ BASE_HTML = """<!doctype html>
 
 </body>
 </html>
-
+"""
 
 # ─── Helper ───
 def send_weather_sms(phone):
     try:
         weather = requests.get("https://wttr.in/Nairobi?format=3").text
         msg = f"🌤️ AgriScan Alert:\nToday's Weather: {weather}"
-        client = Client(TWILIO_SID, TWILIO_TOKEN)
-        message = client.messages.create(body=msg, from_=TWILIO_FROM, to=phone)
+        twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
+        message = twilio_client.messages.create(body=msg, from_=TWILIO_FROM, to=phone)
         return True, f"Sent to {phone}"
     except Exception as e:
         return False, str(e)
 
 def chat_with_gpt(prompt):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{ "role": "user", "content": prompt }]
+            messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
