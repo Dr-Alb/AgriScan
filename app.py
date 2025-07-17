@@ -156,15 +156,33 @@ def chat_with_gpt(prompt):
     except Exception as e:
         return f"Error: {str(e)}"
 
+# Dummy leaf scan function
+def analyze_leaf():
+    return "Leaf scan analysis feature is under development. Please check back soon."
+
 # ─── Routes ───
-@app.route("/send-alert", methods=["GET", "POST"])
+@app.route("/")
 def landing():
     return render_template_string(BASE_HTML, title="Home", body="""
     <div class='card'><h2>Welcome to AgriScan AI</h2>
     <p>Your AI-powered agricultural assistant.</p>
-    <form action='{{ url_for("send_alert") }}' method=(['POST'"POST"])>
+    <form action='{{ url_for("send_alert") }}' method='POST' style='display:inline;'>
       <button type='submit'>Send Today's Weather Alert</button>
-    </form></div>
+    </form>
+    <form action='{{ url_for("leaf_scan") }}' method='GET' style='display:inline; margin-left:10px;'>
+      <button type='submit'>Leaf Scan</button>
+    </form>
+    </div>
+    """)
+
+@app.route("/leaf-scan")
+def leaf_scan():
+    result = analyze_leaf()
+    return render_template_string(BASE_HTML, title="Leaf Scan", body=f"""
+    <div class='card'><h2>Leaf Scan Result</h2>
+    <p>{result}</p>
+    <a href='{{{{ url_for("landing") }}}}'>Back</a>
+    </div>
     """)
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -214,17 +232,20 @@ def dashboard():
     <div class='card'><h2>Welcome {session.get('user', '')}</h2>
     <p>Click below to send today's alert manually.</p>
     <a href='{{{{ url_for("send_alert") }}}}'><button>Send Weather Alert</button></a>
+    <a href='{{{{ url_for("leaf_scan") }}}}'><button style='margin-left:10px;'>Leaf Scan</button></a>
     <hr>
-    <h3>Our Services</h3>
-    <ul>
-      <li>leafe scanning for diseases</li>
-      <li>SMS Alerts for daillly weather updates</li>
-      <li>ChatBot Support to give you solutiond on your crops</li>
-      <li>Smart Forecasting of the best weather patterns</li>
-    </ul></div>
+   <section id="services" class="mt-5">
+  <h2>Our Services</h2>
+  <ul>
+    <li> Leaf Scanning - Detect plant health issues quickly</li>
+    <li> Weather Alerts - Get daily weather forecasts via SMS</li>
+    <li> AI Chatbot - Ask questions and get real-time advice</li>
+  </ul>
+</section>
+
     """)
 
-@app.route("/send-alert", methods=["POST"])
+@app.route("/send-alert", methods=["GET", "POST"])
 def send_alert():
     db = Session()
     user = db.query(User).filter_by(username=session["user"]).first()
