@@ -320,7 +320,7 @@ def chatbot():
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
-   try:
+          try:
         reply = res.choices[0].message.content
 
     except Exception as e:
