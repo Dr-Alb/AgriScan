@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 from twilio.rest import Client
 import requests
+import openai
 
 load_dotenv()
 
@@ -15,10 +16,11 @@ Base = declarative_base()
 engine = create_engine("sqlite:///agricscan.db")
 Session = sessionmaker(bind=engine)
 
-# ─── Twilio Config ───
+# ─── API Keys ───
 TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
 TWILIO_FROM = os.getenv("TWILIO_FROM")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # ─── Models ──
 class User(Base):
@@ -50,7 +52,7 @@ main { flex: 1; padding: 60px 20px; text-align: center; }
 footer { background: #ddd; padding: 12px; text-align: center; font-size: .9rem; color: #444; }
 .btn, button { padding: 10px 22px; border: none; border-radius: 6px; background: var(--green); color: #fff; cursor: pointer; }
 .card { display: inline-block; padding: 24px; margin: 14px; border-radius: 12px; min-width: 250px; background: #ffffffd0; }
-input { padding: 10px; border: 1px solid #999; border-radius: 6px; width: 220px; }
+input, textarea { padding: 10px; border: 1px solid #999; border-radius: 6px; width: 220px; }
 header { padding: 300px 20px; border-radius: 12px; color: #fff;
   background: url('https://images.unsplash.com/photo-1692369584496-3216a88f94c1?q=80&w=1032&auto=format&fit=crop') center/cover; }
 @media (max-width: 600px) {
@@ -66,7 +68,7 @@ header { padding: 300px 20px; border-radius: 12px; color: #fff;
   <div>
     <a href="#home">Home</a>
     <a href="#services">Services</a>
-    <a href="#chatbot">ChatBot</a>
+    <a href="{{ url_for('chatbot') }}">ChatBot</a>
     {% if session.get('user') %}
       <a href="{{ url_for('dashboard') }}">Dashboard</a>
       <a href="{{ url_for('logout') }}">Logout</a>
@@ -79,7 +81,7 @@ header { padding: 300px 20px; border-radius: 12px; color: #fff;
 <div id="sidebar">
   <a href="{{ url_for('landing') }}">Home</a>
   <a href="#services">Services</a>
-  <a href="#chatbot">ChatBot</a>
+  <a href="{{ url_for('chatbot') }}">ChatBot</a>
   {% if session.get('user') %}
     <a href="{{ url_for('dashboard') }}">Dashboard</a>
     <a href="{{ url_for('logout') }}">Logout</a>
@@ -103,7 +105,17 @@ def send_weather_sms(phone):
     except Exception as e:
         return False, str(e)
 
-# ─── Routes ─────
+def chat_with_gpt(prompt):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{ "role": "user", "content": prompt }]
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# ─── Routes ───
 @app.route("/")
 def landing():
     return render_template_string(BASE_HTML, title="Welcome", body="<header><h1>Welcome to AgriScan AI</h1></header>")
@@ -149,10 +161,13 @@ def logout():
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template_string(BASE_HTML, title="Dashboard", body="""
-    <h2>Welcome {{ session['user'] }}</h2>
+    return render_template_string(BASE_HTML, title="Dashboard", body=f"""
+    <h2>Welcome {session['user']}</h2>
     <p>Click below to send today's alert manually.</p>
-    <a class="btn" href="{{ url_for('send_alert') }}">Send Weather Alert</a>
+    <a class="btn" href="{{{{ url_for('send_alert') }}}}">Send Weather Alert</a>
+    <hr><h3 id="services">📌 Services</h3>
+    <div class="card"><h4>📱 SMS Alerts</h4><p>Daily weather notifications via SMS</p></div>
+    <div class="card"><h4>💬 ChatBot</h4><p>Ask the AI about crops, pests, climate, etc.</p></div>
     """)
 
 @app.route("/send-alert")
@@ -176,6 +191,21 @@ def daily_job():
         results.append((u.username, msg))
     log = "<br>".join([f"{u}: {msg}" for u, msg in results])
     return f"<h2>Daily SMS Alert Log</h2><p>{log}</p>", 200
+
+@app.route("/chatbot", methods=["GET", "POST"])
+def chatbot():
+    response = ""
+    if request.method == "POST":
+        question = request.form["message"]
+        response = chat_with_gpt(question)
+    return render_template_string(BASE_HTML, title="ChatBot", body=f"""
+    <h2>AgriScan AI ChatBot</h2>
+    <form method="POST">
+        <textarea name="message" placeholder="Ask me anything..." rows="4" cols="50"></textarea><br><br>
+        <button type="submit">Ask</button>
+    </form>
+    <div style="margin-top: 20px;"><strong>Response:</strong><br>{response}</div>
+    """)
 
 # ─── Run ───
 if __name__ == "__main__":
