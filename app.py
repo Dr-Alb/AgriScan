@@ -70,22 +70,30 @@ BASE_HTML = """
     body {
       margin: 0;
       font-family: "Segoe UI", sans-serif;
-      background: url('https://images.unsplash.com/photo-1601181194783-9d57a5c95134?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80') center/cover no-repeat fixed;
+      background: url('https://images.unsplash.com/photo-1692369584496-3216a88f94c1?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NzF8fGFncmljdWx0dXJlfGVufDB8fDB8fHww') center/cover no-repeat fixed;
       color: #333;
+      position:relative;
+      z-index: 0;
     }
     .video-bg {
       position: fixed;
       top: 0; left: 0;
-      width: 100%; height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
       z-index: -1;
     }
     .overlay {
       background: rgba(0,0,0,0.5);
-      padding: 20px;
-      border-radius: 12px;
-      color: white;
+      padding: 30px;
+      border-radius: 10px;
     }
+    .main {
+    margin-left: 220px;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+  }
     .navbar { background-color: #28a745; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
     .navbar a { color: white; margin-right: 15px; text-decoration: none; position: relative; }
     .navbar .dropdown:hover .dropdown-content { display: block; }
@@ -121,13 +129,15 @@ BASE_HTML = """
   <div class="navbar">
     <div><strong>AgriScan AI</strong></div>
     <div>
-      <div class="dropdown">
-        <a href="#">Services</a>
-        <div class="dropdown-content">
-          <a href="/dashboard">Leaf Scan</a>
-          <a href="/send_alerts">Weather Alerts</a>
-          <a href="/chatbot">Voice Chatbot</a>
-        </div>
+    
+  <div class="dropdown">
+  <a href="/services">Services</a>
+  <div class="dropdown-content">
+    <a href="/dashboard">Leaf Scan</a>
+    <a href="/send_alerts">Weather Alerts</a>
+    <a href="/chatbot">Voice Chatbot</a>
+  </div>
+
       </div>
       <a href="/login">Sign In</a>
       <a href="/signup">Sign Up</a>
@@ -151,6 +161,26 @@ BASE_HTML = """
 </body>
 </html>
 """
+
+@app.route("/services")
+def services():
+    content = """
+    <h2>Our Services</h2>
+    <div class='card'>
+        <h3> Leaf Scan</h3>
+        <p>Upload a photo of a plant leaf to detect possible diseases using AI. Receive instant diagnosis and suggestions.</p>
+    </div>
+    <div class='card'>
+        <h3>🌦 Weather Alerts</h3>
+        <p>We send you daily SMS weather updates using trusted weather sources. Stay prepared before planting or spraying.</p>
+    </div>
+    <div class='card'>
+        <h3> Voice Chatbot</h3>
+        <p>Talk to our AI assistant to get help with farming queries, crop suggestions, and more – using text or your voice.</p>
+    </div>
+    """
+    return render_template_string(BASE_HTML, title="Services", body=content)
+
 
 @app.route("/")
 def landing():
@@ -295,6 +325,33 @@ def send_alerts():
 @app.route("/health")
 def health():
     return "OK", 200
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
+
+def send_daily_weather_alerts():
+    print(f"[{datetime.now()}] Sending weather alerts...")
+    db = SessionLocal()
+    users = db.query(User).all()
+    for user in users:
+        if user.phone:
+            try:
+                msg = requests.get("https://wttr.in/?format=3").text
+                Client(TWILIO_SID, TWILIO_TOKEN).messages.create(
+                    to=user.phone,
+                    from_=TWILIO_FROM,
+                    body=f"🌦 Daily Weather Update: {msg}"
+                )
+                print(f"✔ Alert sent to {user.phone}")
+            except Exception as e:
+                print(f"❌ Failed for {user.phone}: {e}")
+    db.close()
+
+# Schedule it to run every day at 6:00 AM
+scheduler = BackgroundScheduler()
+scheduler.add_job(send_daily_weather_alerts, 'cron', hour=6, minute=0)
+scheduler.start()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
