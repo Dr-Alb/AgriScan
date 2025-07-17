@@ -79,7 +79,22 @@ BASE_HTML = """
       color: #333;
     }
     .navbar { background-color: #28a745; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-    .navbar a { color: white; margin-right: 15px; text-decoration: none; }
+    .navbar a { color: white; margin-right: 15px; text-decoration: none; position: relative; }
+    .navbar .dropdown:hover .dropdown-content { display: block; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: #28a745;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+    }
+    .dropdown-content a {
+      color: white;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+    }
     .sidebar { height: 100vh; width: 200px; position: fixed; top: 0; left: 0; background-color: #222; padding-top: 60px; }
     .sidebar a { padding: 10px 15px; display: block; color: white; text-decoration: none; }
     .sidebar a:hover { background-color: #575757; }
@@ -93,8 +108,13 @@ BASE_HTML = """
   <div class=\"navbar\">
     <div><strong>AgriScan AI</strong></div>
     <div>
-      <a href=\"/\">Home</a>
-      <a href=\"/dashboard\">Services</a>
+      <div class=\"dropdown\">
+        <a href=\"#\">Services</a>
+        <div class=\"dropdown-content\">
+          <a href=\"/dashboard\">Leaf Scan</a>
+          <a href=\"/send_alerts\">Weather Alerts</a>
+        </div>
+      </div>
       <a href=\"/chatbot\">Chatbot</a>
       <a href=\"/login\">Sign In</a>
       <a href=\"/signup\">Sign Up</a>
@@ -102,7 +122,8 @@ BASE_HTML = """
   </div>
   <div class=\"sidebar\">
     <a href=\"/\">Home</a>
-    <a href=\"/dashboard\">Services</a>
+    <a href=\"/dashboard\">Leaf Scan</a>
+    <a href=\"/send_alerts\">Weather Alerts</a>
     <a href=\"/chatbot\">Chatbot</a>
     <a href=\"/login\">Sign In</a>
     <a href=\"/signup\">Sign Up</a>
@@ -119,112 +140,124 @@ BASE_HTML = """
 """
 
 @app.route("/")
-def home():
-    return render_template_string(BASE_HTML, title="Welcome", body="<div class='card'><h2>Welcome to AgriScan AI</h2><p>Scan plant diseases, chat with our AI assistant, and receive smart agriculture alerts.</p></div>")
+def landing():
+    return render_template_string(BASE_HTML, title="Welcome", body="<h2>Welcome to AgriScan AI</h2><p>Smart farming starts here.</p>")
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+        db = SessionLocal()
+        username = request.form["username"]
+        password = request.form["password"]
         phone = request.form.get("phone")
-        session_db = SessionLocal()
-        if session_db.query(User).filter_by(username=username).first():
-            return "Username already exists."
-        hashed = bcrypt.hash(password)
-        new_user = User(username=username, password=password, phone=phone, hash=hashed)
-        session_db.add(new_user)
-        session_db.commit()
-        session_db.close()
-        return redirect(url_for("login"))
-    form_html = """
-    <div class='card'>
-        <h2>Sign Up</h2>
+
+        if db.query(User).filter_by(username=username).first():
+            return "Username already exists"
+
+        hashed_pw = bcrypt.hash(password)
+        user = User(username=username, password=password, phone=phone, hash=hashed_pw)
+        db.add(user)
+        db.commit()
+        db.close()
+        return redirect("/login")
+
+    return render_template_string(BASE_HTML, title="Sign Up", body="""
+        <h2>Create Account</h2>
         <form method='POST'>
             <input name='username' placeholder='Username' required><br>
-            <input type='password' name='password' placeholder='Password' required><br>
-            <input name='phone' placeholder='Phone Number'><br>
-            <button type='submit'>Sign Up</button>
+            <input name='phone' placeholder='Phone Number' required><br>
+            <input name='password' type='password' placeholder='Password' required><br>
+            <button>Sign Up</button>
         </form>
-    </div>"""
-    return render_template_string(BASE_HTML, title="Sign Up", body=form_html)
+    """)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        session_db = SessionLocal()
-        user = session_db.query(User).filter_by(username=username).first()
+        db = SessionLocal()
+        username = request.form["username"]
+        password = request.form["password"]
+        user = db.query(User).filter_by(username=username).first()
+        db.close()
+
         if user and bcrypt.verify(password, user.hash):
             session["user"] = username
-            return redirect(url_for("dashboard"))
-        return "Invalid credentials."
-    form_html = """
-    <div class='card'>
-        <h2>Login</h2>
+            return redirect("/dashboard")
+        else:
+            return "Invalid credentials"
+
+    return render_template_string(BASE_HTML, title="Sign In", body="""
+        <h2>Sign In</h2>
         <form method='POST'>
             <input name='username' placeholder='Username' required><br>
-            <input type='password' name='password' placeholder='Password' required><br>
-            <button type='submit'>Login</button>
+            <input name='password' type='password' placeholder='Password' required><br>
+            <button>Login</button>
         </form>
-    </div>"""
-    return render_template_string(BASE_HTML, title="Login", body=form_html)
+    """)
 
 @app.route("/logout")
 def logout():
-    session.pop("user", None)
-    return redirect(url_for("home"))
+    session.clear()
+    return redirect("/")
 
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
     if "user" not in session:
-        return redirect(url_for("login"))
-    username = session["user"]
-    return render_template_string(BASE_HTML, title="Dashboard", body=f"<div class='card'><h2>Welcome, {username}!</h2><p>Choose a service from the sidebar.</p></div>")
+        return redirect("/login")
+
+    body = """
+        <h2>Leaf Scan</h2>
+        <form method='POST' enctype='multipart/form-data'>
+            <input type='file' name='image' accept='image/*' required><br>
+            <button>Scan</button>
+        </form>
+    """
+
+    if request.method == "POST":
+        img = Image.open(request.files["image"])
+        pred = predict_pil(img)
+        result = f"Predicted: {pred['class_']} with {pred['confidence']*100:.2f}% confidence"
+        body += f"<div class='card'><h3>Result</h3><p>{result}</p></div>"
+
+    return render_template_string(BASE_HTML, title="Dashboard", body=body)
 
 @app.route("/chatbot", methods=["GET", "POST"])
 def chatbot():
-    response_text = ""
+    reply = ""
     if request.method == "POST":
-        user_input = request.form.get("message")
-        res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
-        response_text = res.choices[0].message.content
-    form_html = f"""
-    <div class='card'>
-        <h2>Chat with Agri AI</h2>
-        <form method='POST'>
-            <textarea name='message' rows='4' placeholder='Ask me about plant diseases, weather, farming tips...'></textarea><br>
-            <button type='submit'>Send</button>
-        </form>
-        <p><strong>Response:</strong><br>{response_text}</p>
-    </div>"""
-    return render_template_string(BASE_HTML, title="Chatbot", body=form_html)
+        prompt = request.form["prompt"]
+        res = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        reply = res.choices[0].message.content
 
-@app.route("/scan", methods=["GET", "POST"])
-def scan():
-    result_html = ""
-    if request.method == "POST":
-        file = request.files.get("image")
-        if file:
-            img = Image.open(file.stream)
-            result = predict_pil(img)
-            result_html = f"""
-            <div class='card'>
-                <h3>Prediction Result</h3>
-                <p><strong>Disease:</strong> {result['class_']}</p>
-                <p><strong>Confidence:</strong> {result['confidence']:.2%}</p>
-            </div>"""
-    form_html = f"""
-    <div class='card'>
-        <h2>Scan Plant Disease</h2>
-        <form method='POST' enctype='multipart/form-data'>
-            <input type='file' name='image' accept='image/*' required><br>
-            <button type='submit'>Scan</button>
+    return render_template_string(BASE_HTML, title="Chatbot", body=f"""
+        <h2>Ask AgriScan AI</h2>
+        <form method='POST'>
+            <textarea name='prompt' rows='4' cols='50'></textarea><br>
+            <button>Send</button>
         </form>
-        {result_html}
-    </div>"""
-    return render_template_string(BASE_HTML, title="Scan", body=form_html)
+        <div class='card'><strong>Response:</strong><p>{reply}</p></div>
+    """)
+
+@app.route("/send_alerts")
+def send_alerts():
+    db = SessionLocal()
+    users = db.query(User).all()
+    for user in users:
+        if user.phone:
+            try:
+                msg = requests.get("https://wttr.in/?format=3").text
+                Client(TWILIO_SID, TWILIO_TOKEN).messages.create(
+                    to=user.phone,
+                    from_=TWILIO_FROM,
+                    body=f"🌦 Weather Update: {msg}"
+                )
+            except Exception as e:
+                print(f"Failed to send to {user.phone}: {e}")
+    db.close()
+    return "Weather alerts sent!"
 
 @app.route("/health")
 def health():
