@@ -14,7 +14,6 @@ from passlib.hash import bcrypt
 
 load_dotenv()
 
-# ─── Flask App Initialization ───
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "defaultsecret")
 DB_URL = "sqlite:///agriscan_users.db"
@@ -22,14 +21,12 @@ engine = create_engine(DB_URL, echo=False, connect_args={"check_same_thread": Fa
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
-# ─── OpenAI & Twilio Credentials ───
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
 TWILIO_FROM = os.getenv("TWILIO_FROM")
 
-# ─── User Model ───
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
@@ -40,12 +37,12 @@ class User(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# ─── Load TFLite Model ───
 MODEL_PATH = "plant_disease_model.tflite"
 LABELS_PATH = "label_map.txt"
 
 if not Path(MODEL_PATH).exists():
     raise FileNotFoundError(f"{MODEL_PATH} not found")
+
 interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
 interpreter.allocate_tensors()
 _in, _out = interpreter.get_input_details(), interpreter.get_output_details()
@@ -62,80 +59,107 @@ def predict_pil(img: Image.Image):
     idx = int(np.argmax(probs))
     return {"class_": CLASS_NAMES[idx], "confidence": float(probs[idx])}
 
-
 BASE_HTML = """
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>{{ title }}</title>
-<style>
-/* Reset and base styles */
-body {
-    margin: 0;
-    font-family: "Segoe UI", sans-serif;
-    height: 100vh;
-    overflow: hidden;
-    position: relative;
-    color: #fff;
-}
-/* Video background styling */
-#bg-video {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    min-width: 100%;
-    min-height: 100%;
-    object-fit: cover;
-    z-index: -1;
-}
-
-/* Overlay content styling */
-.content {
-    position: relative;
-    z-index: 1;
-    background: rgba(0,0,0,0.4);
-    padding: 20px;
-    height: 100%;
-    overflow: auto;
-}
-
-/* Navbar styles */
-.navbar {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    background-color: #28a745;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    z-index: 10;
-}
-.navbar a {
-    color: #fff;
-    margin-right: 15px;
-    text-decoration: none;
-    font-weight: bold;
-}
-.navbar .dropdown {
-  position: relative; display: inline-block;
-}
-.dropdown-content {
-  display: none; position: absolute; background-color: #28a745; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1;
-}
-.dropdown:hover .dropdown-content { display: block; }
-.dropdown-content a {
-  color: white;
-}
-"""
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }}</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: url('https://images.unsplash.com/photo-1601181194783-9d57a5c95134?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80') center/cover no-repeat fixed;
+      color: #333;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      background: rgba(0,0,0,0.5);
+      padding: 20px;
+      border-radius: 12px;
+      color: white;
+    }
+    .navbar { background-color: #28a745; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .navbar a { color: white; margin-right: 15px; text-decoration: none; position: relative; }
+    .navbar .dropdown:hover .dropdown-content { display: block; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: #28a745;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+      z-index: 1;
+    }
+    .dropdown-content a {
+      color: white;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+    }
+    .sidebar { height: 100vh; width: 200px; position: fixed; top: 0; left: 0; background-color: #222; padding-top: 60px; }
+    .sidebar a { padding: 10px 15px; display: block; color: white; text-decoration: none; }
+    .sidebar a:hover { background-color: #575757; }
+    .main { margin-left: 220px; padding: 20px; }
+    .footer { background-color: #222; color: white; text-align: center; padding: 15px; position: fixed; width: 100%; bottom: 0; left: 0; }
+    .card { background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 20px; }
+    textarea, input, button { font-size: 1em; padding: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  {% if title == "Welcome" %}
+  <video class="video-bg" autoplay muted loop>
+    <source src="https://www.videvo.net/videvo_files/converted/2016_08/preview/Green_Field_Drone.mp471997.webm" type="video/webm">
+  </video>
+  {% endif %}
+  <div class="navbar">
+    <div><strong>AgriScan AI</strong></div>
+    <div>
+      <div class="dropdown">
+        <a href="#">Services</a>
+        <div class="dropdown-content">
+          <a href="/dashboard">Leaf Scan</a>
+          <a href="/send_alerts">Weather Alerts</a>
+          <a href="/chatbot">Voice Chatbot</a>
+        </div>
+      </div>
+      <a href="/login">Sign In</a>
+      <a href="/signup">Sign Up</a>
+    </div>
+  </div>
+  <div class="sidebar">
+    <a href="/">Home</a>
+    <a href="/dashboard">Leaf Scan</a>
+    <a href="/send_alerts">Weather Alerts</a>
+    <a href="/chatbot">Chatbot</a>
+    <a href="/login">Sign In</a>
+    <a href="/signup">Sign Up</a>
+    <a href="/logout">Logout</a>
+  </div>
+  <div class="main">
+    {{ body|safe }}
+  </div>
+  <div class="footer">
+    © 2025 AgriScan AI. All rights reserved.
+  </div>
 </body>
 </html>
+"""
 
 @app.route("/")
 def landing():
-    return render_template_string(BASE_HTML, title="Welcome", body="<h2>Welcome to AgriScan AI</h2><p>Smart farming starts here.</p>")
+    return render_template_string(BASE_HTML, title="Welcome", body="""
+        <div class='overlay'>
+            <h1>Welcome to AgriScan AI</h1>
+            <p>Revolutionizing farming with artificial intelligence. Get instant leaf disease diagnosis, daily weather alerts, and voice-driven smart assistant for farmers!</p>
+        </div>
+    """)
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -227,12 +251,27 @@ def chatbot():
         reply = res.choices[0].message.content
 
     return render_template_string(BASE_HTML, title="Chatbot", body=f"""
-        <h2>Ask AgriScan AI</h2>
+        <h2>Talk to AgriScan AI</h2>
         <form method='POST'>
-            <textarea name='prompt' rows='4' cols='50'></textarea><br>
+            <textarea name='prompt' rows='3' cols='60' id='prompt'></textarea><br>
             <button>Send</button>
+            <button type='button' onclick='startVoice()'>🎙 Speak</button>
         </form>
-        <div class='card'><strong>Response:</strong><p>{reply}</p></div>
+        <div class='card'><strong>Response:</strong><p id='reply'>{reply}</p></div>
+        <script>
+        function startVoice() {{
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.start();
+            recognition.onresult = (event) => {{
+                document.getElementById('prompt').value = event.results[0][0].transcript;
+            }};
+        }}
+        if ('speechSynthesis' in window && "{reply}".length > 0) {{
+            const utter = new SpeechSynthesisUtterance("{reply}");
+            window.speechSynthesis.speak(utter);
+        }}
+        </script>
     """)
 
 @app.route("/send_alerts")
