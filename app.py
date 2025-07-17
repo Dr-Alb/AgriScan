@@ -318,6 +318,9 @@ def chatbot():
         )
         reply = res.choices[0].message.content
 
+    except Exception as e:
+            reply = f"⚠️ Error: {str(e)}"
+
     return render_template_string(BASE_HTML, title="Chatbot", body=f"""
         <h2>Talk to AgriScan AI</h2>
         <form method='POST'>
