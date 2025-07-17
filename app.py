@@ -14,7 +14,7 @@ from passlib.hash import bcrypt
 
 load_dotenv()
 
-# ─── Configuration ───
+# ─── Flask App Initialization ───
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "defaultsecret")
 DB_URL = "sqlite:///agriscan_users.db"
@@ -22,7 +22,7 @@ engine = create_engine(DB_URL, echo=False, connect_args={"check_same_thread": Fa
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
-# ─── OpenAI & Twilio ───
+# ─── OpenAI & Twilio Credentials ───
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 TWILIO_SID = os.getenv("TWILIO_SID")
@@ -46,7 +46,6 @@ LABELS_PATH = "label_map.txt"
 
 if not Path(MODEL_PATH).exists():
     raise FileNotFoundError(f"{MODEL_PATH} not found")
-
 interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
 interpreter.allocate_tensors()
 _in, _out = interpreter.get_input_details(), interpreter.get_output_details()
@@ -63,81 +62,76 @@ def predict_pil(img: Image.Image):
     idx = int(np.argmax(probs))
     return {"class_": CLASS_NAMES[idx], "confidence": float(probs[idx])}
 
-# ─── Base HTML Layout ───
+
 BASE_HTML = """
 <!doctype html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"UTF-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>
-  <title>{{ title }}</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: \"Segoe UI\", sans-serif;
-      background: url('https://images.unsplash.com/photo-1581090700227-1e37b190418e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80') center/cover no-repeat fixed;
-      color: #333;
-    }
-    .navbar { background-color: #28a745; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-    .navbar a { color: white; margin-right: 15px; text-decoration: none; position: relative; }
-    .navbar .dropdown:hover .dropdown-content { display: block; }
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background-color: #28a745;
-      min-width: 160px;
-      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-      z-index: 1;
-    }
-    .dropdown-content a {
-      color: white;
-      padding: 12px 16px;
-      text-decoration: none;
-      display: block;
-    }
-    .sidebar { height: 100vh; width: 200px; position: fixed; top: 0; left: 0; background-color: #222; padding-top: 60px; }
-    .sidebar a { padding: 10px 15px; display: block; color: white; text-decoration: none; }
-    .sidebar a:hover { background-color: #575757; }
-    .main { margin-left: 220px; padding: 20px; }
-    .footer { background-color: #222; color: white; text-align: center; padding: 15px; position: fixed; width: 100%; bottom: 0; left: 0; }
-    .card { background: rgba(255, 255, 255, 0.85); padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    textarea, input, button { font-size: 1em; padding: 10px; margin-top: 10px; }
-  </style>
-</head>
-<body>
-  <div class=\"navbar\">
-    <div><strong>AgriScan AI</strong></div>
-    <div>
-      <div class=\"dropdown\">
-        <a href=\"#\">Services</a>
-        <div class=\"dropdown-content\">
-          <a href=\"/dashboard\">Leaf Scan</a>
-          <a href=\"/send_alerts\">Weather Alerts</a>
-        </div>
-      </div>
-      <a href=\"/chatbot\">Chatbot</a>
-      <a href=\"/login\">Sign In</a>
-      <a href=\"/signup\">Sign Up</a>
-    </div>
-  </div>
-  <div class=\"sidebar\">
-    <a href=\"/\">Home</a>
-    <a href=\"/dashboard\">Leaf Scan</a>
-    <a href=\"/send_alerts\">Weather Alerts</a>
-    <a href=\"/chatbot\">Chatbot</a>
-    <a href=\"/login\">Sign In</a>
-    <a href=\"/signup\">Sign Up</a>
-    <a href=\"/logout\">Logout</a>
-  </div>
-  <div class=\"main\">
-    {{ body|safe }}
-  </div>
-  <div class=\"footer\">
-    © 2025 AgriScan AI. All rights reserved.
-  </div>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ title }}</title>
+<style>
+/* Reset and base styles */
+body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    color: #fff;
+}
+/* Video background styling */
+#bg-video {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+/* Overlay content styling */
+.content {
+    position: relative;
+    z-index: 1;
+    background: rgba(0,0,0,0.4);
+    padding: 20px;
+    height: 100%;
+    overflow: auto;
+}
+
+/* Navbar styles */
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background-color: #28a745;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    z-index: 10;
+}
+.navbar a {
+    color: #fff;
+    margin-right: 15px;
+    text-decoration: none;
+    font-weight: bold;
+}
+.navbar .dropdown {
+  position: relative; display: inline-block;
+}
+.dropdown-content {
+  display: none; position: absolute; background-color: #28a745; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1;
+}
+.dropdown:hover .dropdown-content { display: block; }
+.dropdown-content a {
+  color: white;
+}
+"""
 </body>
 </html>
-"""
 
 @app.route("/")
 def landing():
