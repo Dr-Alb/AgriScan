@@ -17,6 +17,8 @@ AgriScan AI is a user-friendly web application that empowers farmers to detect p
  Live Demo
 
 🖥 [https://agriscan-z636.onrender.com] *(example URL, replace with your deployed app)*
+https://youtu.be/Yf9EGg_BpWc (YOUTUBE LINK)
+https://youtu.be/odj_bJTLFiU  (tap this link for a live demo)
 
 ---
 
