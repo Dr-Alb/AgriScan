@@ -93,7 +93,7 @@ BASE_HTML = """
 }
    
     .overlay {
-      background: rgba(0,0,0,0.5);
+      background: rgba(255, 191, 0, 0.5);
       padding: 30px;
       border-radius: 10px;
     }
