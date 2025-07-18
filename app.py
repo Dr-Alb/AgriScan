@@ -383,7 +383,8 @@ def send_daily_weather_alerts():
         if user.phone:
             try:
                 msg = requests.get("https://wttr.in/?format=3").text
-               twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)twilio_client.messages.create(
+                twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
+                twilio_client.messages.create(
                     to=user.phone,
                     from_=TWILIO_FROM,
                     body=f"🌦 Daily Weather Update: {msg}"
