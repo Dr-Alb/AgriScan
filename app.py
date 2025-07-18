@@ -163,7 +163,7 @@ BASE_HTML = """
 <body>
   {% if title == "Welcome" %}
  <video class="corner-video" autoplay muted loop>
-  <source src="https://www.pexels.com/video/workers-in-a-greenhouse-farming-checking-their-crops-3195396/">
+  <source src="https://github.com/Dr-Alb/AgriScan/blob/main/2839596-hd_1280_720_30fps.mp4">
   Your browser does not support the video tag.
 </video>
 
