@@ -204,6 +204,11 @@ BASE_HTML = """
 </html>
 """
 
+@app.route("/")
+def splash():
+    return render_template("splash.html")
+
+
 @app.route("/services")
 def services():
     content = """
